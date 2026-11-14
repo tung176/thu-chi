@@ -29,6 +29,7 @@ export const PIE_THU: PieSlice[] = [
   { key: 'phong', label: 'Tiền cho thuê phòng', ids: ['thu-phong'], color: C.orange },
   { key: 'kd', label: 'Tiền kinh doanh', ids: ['thu-kinhdoanh'], color: C.aqua },
   { key: 'dv', label: 'Phí dịch vụ của khách', ids: ['thu-dv'], color: C.yellow },
+  { key: 'thukhac', label: 'Thu khác (phát sinh)', ids: ['thu-phatsinh'], color: C.gray },
 ]
 
 export const PIE_CHI: PieSlice[] = [
@@ -55,6 +56,7 @@ export const PIE_CHI: PieSlice[] = [
       'chi-dulich',
       'chi-tiepkhach',
       'chi-thue-kd',
+      'chi-phatsinh',
     ],
     color: C.gray,
   },

@@ -3,7 +3,7 @@ import { Entry } from './Entry'
 import { MonthTable } from './MonthTable'
 import { Overview } from './Overview'
 import { CATEGORIES } from './data/categories'
-import { loadCategories, loadTxns, putTxn, replaceSummary } from './lib/db'
+import { loadCategories, loadTxns, putMany, putTxn, replaceSummary } from './lib/db'
 import type { Category, History, Txn } from './types'
 
 type Tab = 'entry' | 'overview' | 'table'
@@ -13,6 +13,12 @@ const pad = (n: number) => String(n).padStart(2, '0')
 // Tháng hiện tại theo lịch của máy, tính một lần khi mở app.
 const NOW = new Date()
 const thisMonth = `${NOW.getFullYear()}-${pad(NOW.getMonth() + 1)}`
+
+/** Danh mục đã lưu trong máy, cộng thêm các danh mục mới của bản app (ví dụ nhóm Phát sinh). */
+function mergeCategories(stored: Category[]): Category[] {
+  const have = new Set(stored.map((c) => c.id))
+  return [...stored, ...CATEGORIES.filter((c) => !have.has(c.id))]
+}
 
 /** Mọi tháng từ tháng đầu có dữ liệu đến tháng hiện tại của lịch. */
 function monthRange(first: string, last: string): string[] {
@@ -41,7 +47,7 @@ export default function App() {
 
   const importHistory = async (h: History) => {
     await replaceSummary(h.txns, h.categories)
-    setCategories(h.categories)
+    setCategories(mergeCategories(await loadCategories()))
     setTxns((await loadTxns()).filter((t) => !t.deleted))
   }
 
@@ -62,7 +68,7 @@ export default function App() {
       }
       const [t, c] = await Promise.all([loadTxns(), loadCategories()])
       if (!alive) return
-      if (c.length > 0) setCategories(c)
+      if (c.length > 0) setCategories(mergeCategories(c))
       setTxns(t.filter((x) => !x.deleted))
     })()
     return () => {
@@ -82,6 +88,16 @@ export default function App() {
 
   const addTxn = (t: Txn) => {
     setTxns((cur) => [...(cur ?? []), t])
+    void putTxn(t)
+  }
+
+  const addCategory = (c: Category) => {
+    setCategories((cur) => [...cur, c])
+    void putMany('categories', [c])
+  }
+
+  const updateTxn = (t: Txn) => {
+    setTxns((cur) => (cur ?? []).map((x) => (x.id === t.id ? t : x)))
     void putTxn(t)
   }
 
@@ -131,7 +147,14 @@ export default function App() {
       </header>
       <main className="main">
         {tab === 'entry' && (
-          <Entry categories={categories} txns={txns} onAdd={addTxn} onDelete={deleteTxn} />
+          <Entry
+            categories={categories}
+            txns={txns}
+            onAdd={addTxn}
+            onUpdate={updateTxn}
+            onDelete={deleteTxn}
+            onAddCategory={addCategory}
+          />
         )}
         {tab === 'overview' && (
           <Overview categories={categories} txns={txns} months={months} initialMonth={latest} />

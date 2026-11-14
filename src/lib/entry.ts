@@ -6,6 +6,7 @@ export function selectable(categories: Category[], kind: Kind): Category[] {
     (c) =>
       c.kind === kind &&
       !c.archived &&
+      !c.container &&
       !categories.some((x) => x.parentId === c.id && !x.archived),
   )
 }

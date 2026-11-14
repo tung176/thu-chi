@@ -258,3 +258,8 @@ input, button { font-size: 16px; touch-action: manipulation; }
 .key.span2 { font-size: 15px; }
 .save { font-size: 17px; }
 * { -webkit-tap-highlight-color: transparent; }
+
+/* Gợi ý danh mục khi gõ nội dung, đổi mục của khoản đã lưu */
+.suggest { font-size: 13px; color: var(--accent); margin-top: 6px; }
+.suggest b { font-weight: 700; }
+.r-cat { border: 0; background: none; padding: 0; color: var(--text); font-size: 14px; text-align: left; text-decoration: underline dotted var(--muted); text-underline-offset: 3px; }

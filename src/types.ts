@@ -8,6 +8,8 @@ export interface Category {
   parentId: string | null
   /** Mục đã lưu trữ: không hiện khi nhập mới, vẫn giữ để dữ liệu cũ đúng. */
   archived?: boolean
+  /** Nhóm chỉ để chứa mục con (ví dụ "Phát sinh"), không chọn trực tiếp khi nhập. */
+  container?: boolean
 }
 
 export interface Txn {

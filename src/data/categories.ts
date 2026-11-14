@@ -46,4 +46,13 @@ export const CATEGORIES: Category[] = [
   { id: 'chi-dulich', name: 'Tiền đi du lịch', kind: 'chi', parentId: null },
   { id: 'chi-thue-kd', name: 'Tiền thuế kinh doanh', kind: 'chi', parentId: null },
   { id: 'chi-tranno', name: 'Trả nợ', kind: 'chi', parentId: null },
+
+  // Mục mới phát sinh khi nhập tay (ví dụ "Xăng xe máy") được app tự tạo trong hai nhóm này.
+  { id: 'chi-phatsinh', name: 'Phát sinh', kind: 'chi', parentId: null, container: true },
+  { id: 'thu-phatsinh', name: 'Thu phát sinh', kind: 'thu', parentId: null, container: true },
 ]
+
+export const PHATSINH: Record<'thu' | 'chi', string> = {
+  chi: 'chi-phatsinh',
+  thu: 'thu-phatsinh',
+}
