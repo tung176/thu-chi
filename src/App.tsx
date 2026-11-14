@@ -90,6 +90,13 @@ export default function App() {
     }
   }
 
+  /** Đọc lại dữ liệu từ bộ nhớ trong máy (sau khi nhập file sao lưu). */
+  const reload = async () => {
+    const [t, c] = await Promise.all([loadTxns(), loadCategories()])
+    setCategories(mergeCategories(c))
+    setTxns(t.filter((x) => !x.deleted))
+  }
+
   const addTxn = (t: Txn) => {
     setTxns((cur) => [...(cur ?? []), t])
     void putTxn(t)
@@ -176,7 +183,7 @@ export default function App() {
             <MonthTable categories={categories} txns={txns} months={months} currentMonth={thisMonth} />
           </>
         )}
-        {tab === 'settings' && <Settings />}
+        {tab === 'settings' && <Settings onImported={reload} />}
       </main>
       <nav className="tabbar">
         <button className={tab === 'entry' ? 'on' : ''} onClick={() => setTab('entry')}>

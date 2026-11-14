@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   AiError,
   clearKey,
@@ -11,10 +11,39 @@ import {
   testConnection,
   type Usage,
 } from './lib/ai'
+import { exportFile, importBackup } from './lib/backup'
 
 const mask = (k: string) => (k ? `••••••••${k.slice(-4)}` : 'Chưa có key')
 
-export function Settings() {
+export function Settings({ onImported }: { onImported: () => void }) {
+  const [backupMsg, setBackupMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const doExport = async () => {
+    try {
+      const r = await exportFile()
+      setBackupMsg({ ok: true, text: `Đã tạo file ${r.name} (${r.count} khoản). Chọn "Lưu vào Tệp" hoặc Drive để cất đi.` })
+    } catch {
+      setBackupMsg({ ok: false, text: 'Không xuất được file. Thử lại nhé.' })
+    }
+  }
+
+  const doImport = async (file: File | undefined) => {
+    if (!file) return
+    try {
+      const r = await importBackup(await file.text())
+      onImported()
+      setBackupMsg({
+        ok: true,
+        text: `Đã nhập: thêm ${r.added} khoản, cập nhật ${r.updated}${r.skipped ? `, bỏ qua ${r.skipped} dòng lỗi` : ''}. Dữ liệu đang có trong máy không bị xóa.`,
+      })
+    } catch (e) {
+      setBackupMsg({ ok: false, text: (e as Error).message })
+    } finally {
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
   const [key, setKeyState] = useState(getKey())
   const [draft, setDraft] = useState('')
   const [enabled, setEnabledState] = useState(isEnabled())
@@ -146,6 +175,30 @@ export function Settings() {
           </div>
         </div>
         <p className="muted small">Số này đếm trên máy này từ lần đặt lại gần nhất, dùng để ước lượng chi phí.</p>
+      </section>
+
+      <section className="card">
+        <h2>Sao lưu thủ công</h2>
+        <p className="muted small">
+          Xuất toàn bộ khoản thu chi ra một file để cất vào Tệp hoặc Drive. Nhập file lại khi đổi điện thoại. Nhập
+          file chỉ thêm hoặc cập nhật khoản, không xóa gì đang có.
+        </p>
+        <div className="row2">
+          <button className="chip big" onClick={() => void doExport()}>
+            Xuất file sao lưu
+          </button>
+          <button className="chip big" onClick={() => fileRef.current?.click()}>
+            Nhập từ file
+          </button>
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          onChange={(e) => void doImport(e.target.files?.[0])}
+        />
+        {backupMsg && <div className={backupMsg.ok ? 'msg ok' : 'msg bad'}>{backupMsg.text}</div>}
       </section>
 
       <section className="card">
