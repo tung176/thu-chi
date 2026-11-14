@@ -3,7 +3,7 @@ import { Entry } from './Entry'
 import { MonthTable } from './MonthTable'
 import { Overview } from './Overview'
 import { CATEGORIES } from './data/categories'
-import { loadCategories, loadTxns, putMany, putTxn, replaceSummary } from './lib/db'
+import { delCategory, loadCategories, loadTxns, putMany, putTxn, replaceSummary } from './lib/db'
 import type { Category, History, Txn } from './types'
 
 type Tab = 'entry' | 'overview' | 'table'
@@ -14,10 +14,13 @@ const pad = (n: number) => String(n).padStart(2, '0')
 const NOW = new Date()
 const thisMonth = `${NOW.getFullYear()}-${pad(NOW.getMonth() + 1)}`
 
-/** Danh mục đã lưu trong máy, cộng thêm các danh mục mới của bản app (ví dụ nhóm Phát sinh). */
+/**
+ * Danh mục của bản app (nhóm, tên, cách xếp) luôn lấy theo code để cập nhật được khi app đổi;
+ * danh mục bạn tự tạo (u-...) giữ nguyên từ bộ nhớ trong máy.
+ */
 function mergeCategories(stored: Category[]): Category[] {
-  const have = new Set(stored.map((c) => c.id))
-  return [...stored, ...CATEGORIES.filter((c) => !have.has(c.id))]
+  const seeded = new Set(CATEGORIES.map((c) => c.id))
+  return [...CATEGORIES, ...stored.filter((c) => !seeded.has(c.id))]
 }
 
 /** Mọi tháng từ tháng đầu có dữ liệu đến tháng hiện tại của lịch. */
@@ -46,7 +49,7 @@ export default function App() {
   const [error, setError] = useState('')
 
   const importHistory = async (h: History) => {
-    await replaceSummary(h.txns, h.categories)
+    await replaceSummary(h.txns)
     setCategories(mergeCategories(await loadCategories()))
     setTxns((await loadTxns()).filter((t) => !t.deleted))
   }
@@ -94,6 +97,11 @@ export default function App() {
   const addCategory = (c: Category) => {
     setCategories((cur) => [...cur, c])
     void putMany('categories', [c])
+  }
+
+  const removeCategory = (id: string) => {
+    setCategories((cur) => cur.filter((c) => c.id !== id))
+    void delCategory(id)
   }
 
   const updateTxn = (t: Txn) => {
@@ -154,6 +162,7 @@ export default function App() {
             onUpdate={updateTxn}
             onDelete={deleteTxn}
             onAddCategory={addCategory}
+            onRemoveCategory={removeCategory}
           />
         )}
         {tab === 'overview' && (

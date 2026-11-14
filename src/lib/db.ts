@@ -49,25 +49,25 @@ export const putTxn = (t: Txn) => run('txns', 'readwrite', (s) => void s.put(t))
  * Nạp lại lịch sử từ file Sheet: thay toàn bộ giao dịch "tổng hợp" cũ bằng bản mới,
  * giữ nguyên các khoản bạn đã tự nhập trong app.
  */
-export function replaceSummary(history: Txn[], categories: Category[]) {
+export function replaceSummary(history: Txn[]) {
   return open().then(
     (db) =>
       new Promise<void>((resolve, reject) => {
-        const tx = db.transaction(['txns', 'categories'], 'readwrite')
+        const tx = db.transaction('txns', 'readwrite')
         const txns = tx.objectStore('txns')
         const req = txns.getAll()
         req.onsuccess = () => {
           for (const t of req.result as Txn[]) if (t.summary) txns.delete(t.id)
           for (const t of history) txns.put(t)
         }
-        const cats = tx.objectStore('categories')
-        for (const c of categories) cats.put(c)
         tx.oncomplete = () => resolve()
         tx.onerror = () => reject(tx.error)
         tx.onabort = () => reject(tx.error)
       }),
   )
 }
+
+export const delCategory = (id: string) => run('categories', 'readwrite', (s) => void s.delete(id))
 
 export function putMany(store: 'txns' | 'categories', items: (Txn | Category)[]) {
   return run(store, 'readwrite', (s) => {

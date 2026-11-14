@@ -1,58 +1,144 @@
-import type { Category } from '../types'
+import type { Category, Kind } from '../types'
 
-// Danh mục theo đúng tab "Thu chi hàng tháng" trong file Sheet của bạn.
+// Danh mục: 14 nhóm lớn cho Chi, Thu giữ theo file Sheet.
+// Dấu ✱ trong ghi chú = dòng đang có trong tab "Thu chi hàng tháng" của bạn (giữ nguyên id để số cũ không đổi).
 // Mục nào nằm dưới Chi thì là chi, tên chỉ là cách ghi vắn tắt.
+
+const chi = (id: string, name: string, parentId: string | null, extra: Partial<Category> = {}): Category => ({
+  id,
+  name,
+  kind: 'chi',
+  parentId,
+  ...extra,
+})
+const thu = (id: string, name: string, parentId: string | null, extra: Partial<Category> = {}): Category => ({
+  id,
+  name,
+  kind: 'thu',
+  parentId,
+  ...extra,
+})
+
 export const CATEGORIES: Category[] = [
-  // ----- THU -----
-  { id: 'thu-luong', name: 'Tiền lương', kind: 'thu', parentId: null },
-  { id: 'thu-kinhdoanh', name: 'Tiền kinh doanh', kind: 'thu', parentId: null },
+  // ===== THU =====
+  thu('thu-luong', 'Tiền lương', null), // ✱
+  thu('thu-kinhdoanh', 'Tiền kinh doanh', null), // ✱
 
-  { id: 'thu-phong', name: 'Tiền phòng', kind: 'thu', parentId: null },
-  { id: 'thu-phong-t2', name: 'Tầng 2', kind: 'thu', parentId: 'thu-phong' },
-  { id: 'thu-phong-t3', name: 'Tầng 3', kind: 'thu', parentId: 'thu-phong' },
-  { id: 'thu-phong-t4', name: 'Tầng 4', kind: 'thu', parentId: 'thu-phong' },
+  thu('thu-phong', 'Tiền phòng', null), // ✱
+  thu('thu-phong-t2', 'Tầng 2', 'thu-phong'),
+  thu('thu-phong-t3', 'Tầng 3', 'thu-phong'),
+  thu('thu-phong-t4', 'Tầng 4', 'thu-phong'),
 
-  { id: 'thu-dv', name: 'Tiền phí dịch vụ', kind: 'thu', parentId: null },
-  { id: 'thu-dv-t2', name: 'Tầng 2', kind: 'thu', parentId: 'thu-dv' },
-  { id: 'thu-dv-t3', name: 'Tầng 3', kind: 'thu', parentId: 'thu-dv' },
-  { id: 'thu-dv-t4', name: 'Tầng 4', kind: 'thu', parentId: 'thu-dv' },
+  thu('thu-dv', 'Tiền phí dịch vụ', null), // ✱
+  thu('thu-dv-t2', 'Tầng 2', 'thu-dv'),
+  thu('thu-dv-t3', 'Tầng 3', 'thu-dv'),
+  thu('thu-dv-t4', 'Tầng 4', 'thu-dv'),
 
-  // ----- CHI -----
-  { id: 'chi-angd', name: 'Tiền ăn gia đình', kind: 'chi', parentId: null },
-  { id: 'chi-ancon', name: 'Tiền ăn cho con', kind: 'chi', parentId: null },
+  thu('thu-phatsinh', 'Thu khác', null, { container: true }),
+  thu('thu-lai', 'Lãi, hoàn tiền', 'thu-phatsinh'),
+  thu('thu-bando', 'Bán đồ cũ', 'thu-phatsinh'),
+  thu('thu-duocbieu', 'Được biếu, được mừng', 'thu-phatsinh'),
 
-  { id: 'chi-dien', name: 'Điện', kind: 'chi', parentId: null },
-  { id: 'chi-dien-tien', name: 'Tiền điện', kind: 'chi', parentId: 'chi-dien' },
-  { id: 'chi-dien-3pha', name: 'Tiền điện 3 pha', kind: 'chi', parentId: 'chi-dien' },
+  // ===== CHI =====
+  // 1. Ăn uống
+  chi('g-chi-anuong', 'Ăn uống', null, { container: true }),
+  chi('chi-angd', 'Tiền ăn gia đình', 'g-chi-anuong'), // ✱
+  chi('chi-ancon', 'Tiền ăn cho con', 'g-chi-anuong'), // ✱
+  chi('chi-cafe', 'Cà phê, trà sữa', 'g-chi-anuong'),
+  chi('chi-anngoai', 'Ăn ngoài, giao đồ ăn', 'g-chi-anuong'),
 
-  { id: 'chi-nuoc', name: 'Nước', kind: 'chi', parentId: null },
-  { id: 'chi-nuoc-tien', name: 'Tiền nước', kind: 'chi', parentId: 'chi-nuoc' },
-  { id: 'chi-nuoc-giatla', name: 'Nước giặt là (kinh doanh)', kind: 'chi', parentId: 'chi-nuoc' },
+  // 2. Nhà ở
+  chi('g-chi-nhao', 'Nhà ở', null, { container: true }),
+  chi('chi-gopnha', 'Tiền trả góp nhà', 'g-chi-nhao'), // ✱
+  chi('chi-suanha', 'Sửa chữa, bảo trì nhà', 'g-chi-nhao'),
+  chi('chi-giadung', 'Đồ gia dụng, nội thất', 'g-chi-nhao'),
 
-  { id: 'chi-internet', name: 'Tiền internet', kind: 'chi', parentId: null },
-  { id: 'chi-truyenhinh', name: 'Tiền truyền hình', kind: 'chi', parentId: null },
-  { id: 'chi-gopnha', name: 'Tiền trả góp nhà', kind: 'chi', parentId: null },
-  { id: 'chi-baohiem', name: 'Tiền bảo hiểm', kind: 'chi', parentId: null },
-  { id: 'chi-hoctap', name: 'Tiền học tập', kind: 'chi', parentId: null },
-  { id: 'chi-dautu', name: 'Tiền đầu tư làm ăn', kind: 'chi', parentId: null },
+  // 3. Điện nước, tiện ích
+  chi('g-chi-tienich', 'Điện nước, tiện ích', null, { container: true }),
+  chi('chi-dien', 'Điện', 'g-chi-tienich'), // ✱ nhóm
+  chi('chi-dien-tien', 'Tiền điện', 'chi-dien'), // ✱
+  chi('chi-dien-3pha', 'Tiền điện 3 pha', 'chi-dien'), // ✱
+  chi('chi-nuoc', 'Nước', 'g-chi-tienich'), // ✱ nhóm
+  chi('chi-nuoc-tien', 'Tiền nước', 'chi-nuoc'), // ✱
+  chi('chi-nuoc-giatla', 'Nước giặt là (kinh doanh)', 'chi-nuoc'),
+  chi('chi-internet', 'Tiền internet', 'g-chi-tienich'), // ✱
+  chi('chi-truyenhinh', 'Tiền truyền hình', 'g-chi-tienich'), // ✱
+  chi('chi-dienthoai', 'Cước điện thoại', 'g-chi-tienich'),
+  chi('chi-gas', 'Gas, rác', 'g-chi-tienich'),
 
-  { id: 'chi-thedao', name: 'Tiền trả thẻ ngoài đáo', kind: 'chi', parentId: null },
-  { id: 'chi-the-tech', name: 'Thẻ Tech', kind: 'chi', parentId: 'chi-thedao', archived: true },
-  { id: 'chi-the-shinhan', name: 'Thẻ Shinhan', kind: 'chi', parentId: 'chi-thedao', archived: true },
-  { id: 'chi-the-woori', name: 'Thẻ Woori Bank', kind: 'chi', parentId: 'chi-thedao', archived: true },
+  // 4. Di chuyển
+  chi('g-chi-dichuyen', 'Di chuyển', null, { container: true }),
+  chi('chi-xang', 'Xăng xe', 'g-chi-dichuyen'),
+  chi('chi-guixe', 'Gửi xe, cầu đường', 'g-chi-dichuyen'),
+  chi('chi-taxi', 'Taxi, Grab', 'g-chi-dichuyen'),
+  chi('chi-suaxe', 'Sửa, bảo dưỡng xe', 'g-chi-dichuyen'),
+  chi('chi-ve', 'Vé tàu xe, máy bay', 'g-chi-dichuyen'),
 
-  { id: 'chi-gopbd', name: 'Tiền trả góp / bảo dưỡng', kind: 'chi', parentId: null },
-  { id: 'chi-tiepkhach', name: 'Tiền tiếp chính quyền', kind: 'chi', parentId: null },
-  { id: 'chi-dulich', name: 'Tiền đi du lịch', kind: 'chi', parentId: null },
-  { id: 'chi-thue-kd', name: 'Tiền thuế kinh doanh', kind: 'chi', parentId: null },
-  { id: 'chi-tranno', name: 'Trả nợ', kind: 'chi', parentId: null },
+  // 5. Mua sắm
+  chi('g-chi-muasam', 'Mua sắm', null, { container: true }),
+  chi('chi-quanao', 'Quần áo, giày dép', 'g-chi-muasam'),
+  chi('chi-canhan', 'Đồ dùng cá nhân, mỹ phẩm', 'g-chi-muasam'),
+  chi('chi-dientu', 'Đồ điện tử, phụ kiện', 'g-chi-muasam'),
 
-  // Mục mới phát sinh khi nhập tay (ví dụ "Xăng xe máy") được app tự tạo trong hai nhóm này.
-  { id: 'chi-phatsinh', name: 'Phát sinh', kind: 'chi', parentId: null, container: true },
-  { id: 'thu-phatsinh', name: 'Thu phát sinh', kind: 'thu', parentId: null, container: true },
+  // 6. Con cái
+  chi('g-chi-concai', 'Con cái', null, { container: true }),
+  chi('chi-hocphi', 'Học phí, trường lớp', 'g-chi-concai'),
+  chi('chi-suabim', 'Sữa, bỉm', 'g-chi-concai'),
+  chi('chi-dochoi', 'Đồ chơi, đồ dùng cho con', 'g-chi-concai'),
+
+  // 7. Sức khỏe, làm đẹp
+  chi('g-chi-suckhoe', 'Sức khỏe, làm đẹp', null, { container: true }),
+  chi('chi-khambenh', 'Khám chữa bệnh', 'g-chi-suckhoe'),
+  chi('chi-thuoc', 'Thuốc', 'g-chi-suckhoe'),
+  chi('chi-thethao', 'Thể thao', 'g-chi-suckhoe'),
+  chi('chi-lamdep', 'Cắt tóc, spa', 'g-chi-suckhoe'),
+
+  // 8. Bảo hiểm (một mục, đứng riêng)
+  chi('chi-baohiem', 'Tiền bảo hiểm', null), // ✱
+
+  // 9. Học tập
+  chi('g-chi-hoctap', 'Học tập', null, { container: true }),
+  chi('chi-hoctap', 'Tiền học tập', 'g-chi-hoctap'), // ✱
+  chi('chi-sach', 'Sách, tài liệu', 'g-chi-hoctap'),
+  chi('chi-phanmem', 'Phần mềm, ứng dụng', 'g-chi-hoctap'),
+
+  // 10. Giải trí, du lịch
+  chi('g-chi-giaitri', 'Giải trí, du lịch', null, { container: true }),
+  chi('chi-dulich', 'Tiền đi du lịch', 'g-chi-giaitri'), // ✱
+  chi('chi-phim', 'Xem phim, vui chơi', 'g-chi-giaitri'),
+  chi('chi-thuebao', 'Thuê bao số', 'g-chi-giaitri'),
+
+  // 11. Quan hệ, hiếu hỉ
+  chi('g-chi-quanhe', 'Quan hệ, hiếu hỉ', null, { container: true }),
+  chi('chi-tiepkhach', 'Tiền tiếp chính quyền', 'g-chi-quanhe'), // ✱
+  chi('chi-muncuoi', 'Mừng cưới', 'g-chi-quanhe'),
+  chi('chi-phungvieng', 'Phúng viếng', 'g-chi-quanhe'),
+  chi('chi-bieu', 'Biếu bố mẹ', 'g-chi-quanhe'),
+  chi('chi-qua', 'Quà tặng', 'g-chi-quanhe'),
+  chi('chi-tuthien', 'Từ thiện', 'g-chi-quanhe'),
+
+  // 12. Kinh doanh
+  chi('g-chi-kinhdoanh', 'Kinh doanh', null, { container: true }),
+  chi('chi-dautu', 'Tiền đầu tư làm ăn', 'g-chi-kinhdoanh'), // ✱
+  chi('chi-thue-kd', 'Tiền thuế kinh doanh', 'g-chi-kinhdoanh'), // ✱
+  chi('chi-kd-khac', 'Chi phí kinh doanh khác', 'g-chi-kinhdoanh'),
+
+  // 13. Tài chính, nợ
+  chi('g-chi-taichinh', 'Tài chính, nợ', null, { container: true }),
+  chi('chi-gopbd', 'Tiền trả góp / bảo dưỡng', 'g-chi-taichinh'), // ✱
+  chi('chi-thedao', 'Tiền trả thẻ ngoài đáo', 'g-chi-taichinh'), // ✱
+  chi('chi-the-tech', 'Thẻ Tech', 'chi-thedao', { archived: true }),
+  chi('chi-the-shinhan', 'Thẻ Shinhan', 'chi-thedao', { archived: true }),
+  chi('chi-the-woori', 'Thẻ Woori Bank', 'chi-thedao', { archived: true }),
+  chi('chi-tranno', 'Trả nợ', 'g-chi-taichinh'),
+  chi('chi-phinh', 'Phí ngân hàng, lãi', 'g-chi-taichinh'),
+
+  // 14. Chưa phân loại: chỗ tạm cho mục app tự tạo mà chưa biết xếp vào nhóm nào
+  chi('chi-phatsinh', 'Chưa phân loại', null, { container: true }),
 ]
 
-export const PHATSINH: Record<'thu' | 'chi', string> = {
+/** Nhóm chứa mục mới tự tạo khi chưa biết xếp vào đâu. */
+export const PHATSINH: Record<Kind, string> = {
   chi: 'chi-phatsinh',
   thu: 'thu-phatsinh',
 }

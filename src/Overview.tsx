@@ -8,7 +8,9 @@ import {
   sumIds,
   vnd,
 } from './lib/aggregate'
+import { pathOf } from './lib/entry'
 import { computeGap, GAPS, PIE_CHI, PIE_THU, type PieSlice } from './lib/overview'
+import { TxnSheet, type Picked } from './TxnSheet'
 
 interface Props {
   categories: Category[]
@@ -32,7 +34,7 @@ export function Overview({ categories, txns, months, initialMonth }: Props) {
 
   const period = useMemo(
     () => (mode === 'month' ? [month] : months.filter((m) => m.startsWith(year))),
-    [mode, month, months, year, ]
+    [mode, month, months, year],
   )
 
   const idx = months.indexOf(month)
@@ -95,8 +97,26 @@ export function Overview({ categories, txns, months, initialMonth }: Props) {
         </div>
       </div>
 
-      <PieCard title="Thu theo nguồn" slices={PIE_THU} period={period} leaf={leaf} categories={categories} />
-      <PieCard title="Chi theo hạng mục" slices={PIE_CHI} period={period} leaf={leaf} categories={categories} />
+      <PieCard
+        title="Thu theo nguồn"
+        kind="thu"
+        slices={PIE_THU}
+        kindSum={thu}
+        period={period}
+        leaf={leaf}
+        categories={categories}
+        txns={txns}
+      />
+      <PieCard
+        title="Chi theo hạng mục"
+        kind="chi"
+        slices={PIE_CHI}
+        kindSum={chi}
+        period={period}
+        leaf={leaf}
+        categories={categories}
+        txns={txns}
+      />
 
       <h2 className="sec">So sánh thu và chi</h2>
       {GAPS.map((g) => {
@@ -149,29 +169,77 @@ function GapBar({
   )
 }
 
+interface Row {
+  id: string
+  label: string
+  amount: number
+}
+
 function PieCard({
   title,
+  kind,
   slices,
+  kindSum,
   period,
   leaf,
   categories,
+  txns,
 }: {
   title: string
+  kind: 'thu' | 'chi'
   slices: PieSlice[]
+  kindSum: number
   period: string[]
   leaf: Map<string, number>
   categories: Category[]
+  txns: Txn[]
 }) {
+  const [detail, setDetail] = useState<{ title: string; rows: Row[] } | null>(null)
+  const [picked, setPicked] = useState<Picked | null>(null)
+
+  // Id thuộc từng lát (đã gồm mục con). Lát "Khác" là mọi mục của loại này chưa nằm trong lát nào.
+  const idsOf = useMemo(() => {
+    const explicit = new Set<string>()
+    const map = new Map<string, string[]>()
+    for (const s of slices) {
+      if (s.rest) continue
+      const ids = expandIds(s.ids, categories)
+      ids.forEach((i) => explicit.add(i))
+      map.set(s.key, ids)
+    }
+    for (const s of slices) {
+      if (s.rest) {
+        map.set(
+          s.key,
+          categories.filter((c) => c.kind === kind && !explicit.has(c.id)).map((c) => c.id),
+        )
+      }
+    }
+    return map
+  }, [slices, categories, kind])
+
   const data = slices.map((s) => ({
     ...s,
-    value: sumIds(expandIds(s.ids, categories), period, leaf),
+    value: sumIds(idsOf.get(s.key) ?? [], period, leaf),
   }))
-  const total = data.reduce((s, d) => s + d.value, 0)
+  const total = kindSum
   const drawn = data.filter((d) => d.value > 0).sort((a, b) => b.value - a.value)
   const pctOf = (v: number) => (total > 0 ? (v / total) * 100 : 0)
   const fmtPct = (v: number) => {
     const p = pctOf(v)
     return p > 0 && p < 1 ? '<1%' : `${Math.round(p)}%`
+  }
+
+  const openDetail = (key: string, label: string) => {
+    const ids = idsOf.get(key) ?? []
+    const rows: Row[] = ids
+      .map((id) => {
+        const c = categories.find((x) => x.id === id)
+        return { id, label: c ? pathOf(c, categories) : id, amount: sumIds([id], period, leaf) }
+      })
+      .filter((r) => r.amount !== 0)
+      .sort((a, b) => b.amount - a.amount)
+    setDetail({ title: label, rows })
   }
 
   const paths = drawn.map((d, i) => {
@@ -205,10 +273,23 @@ function PieCard({
         <div className="pie-wrap">
           <svg viewBox="0 0 120 120" className="pie" role="img" aria-label={title}>
             {paths.length === 1 ? (
-              <circle cx={cx} cy={cy} r={R} fill={paths[0].d.color} />
+              <circle
+                cx={cx}
+                cy={cy}
+                r={R}
+                fill={paths[0].d.color}
+                onClick={() => openDetail(paths[0].d.key, paths[0].d.label)}
+              />
             ) : (
               paths.map(({ d, a0, a1 }) => (
-                <path key={d.key} d={arc(a0, a1)} fill={d.color} stroke="var(--card)" strokeWidth="1.5">
+                <path
+                  key={d.key}
+                  d={arc(a0, a1)}
+                  fill={d.color}
+                  stroke="var(--card)"
+                  strokeWidth="1.5"
+                  onClick={() => openDetail(d.key, d.label)}
+                >
                   <title>{`${d.label}: ${vnd(d.value)} ₫ (${fmtPct(d.value)})`}</title>
                 </path>
               ))
@@ -216,7 +297,7 @@ function PieCard({
           </svg>
           <ul className="legend">
             {drawn.map((d) => (
-              <li key={d.key}>
+              <li key={d.key} className="tap" onClick={() => openDetail(d.key, d.label)}>
                 <span className="sw" style={{ background: d.color }} />
                 <span className="lg-name">{d.label}</span>
                 <span className="lg-pct">{fmtPct(d.value)}</span>
@@ -225,6 +306,40 @@ function PieCard({
             ))}
           </ul>
         </div>
+      )}
+
+      {detail && (
+        <div className="backdrop" onClick={() => setDetail(null)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <div>
+                <div className="sheet-title">{detail.title}</div>
+                <div className="sheet-sub">
+                  {detail.rows.length} mục · {vnd(detail.rows.reduce((s, r) => s + r.amount, 0))} ₫
+                </div>
+              </div>
+              <button className="close" onClick={() => setDetail(null)} aria-label="Đóng">
+                ✕
+              </button>
+            </div>
+            <ul className="txn-list">
+              {detail.rows.map((r) => (
+                <li
+                  key={r.id}
+                  className="pick"
+                  onClick={() => setPicked({ title: r.label, months: period, ids: [r.id] })}
+                >
+                  <div className="t-main">{r.label}</div>
+                  <div className="t-amt">{vnd(r.amount)}</div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {picked && (
+        <TxnSheet picked={picked} txns={txns} categories={categories} onClose={() => setPicked(null)} />
       )}
     </section>
   )

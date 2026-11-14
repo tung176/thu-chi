@@ -263,3 +263,37 @@ input, button { font-size: 16px; touch-action: manipulation; }
 .suggest { font-size: 13px; color: var(--accent); margin-top: 6px; }
 .suggest b { font-weight: 700; }
 .r-cat { border: 0; background: none; padding: 0; color: var(--text); font-size: 14px; text-align: left; text-decoration: underline dotted var(--muted); text-underline-offset: 3px; }
+
+/* ---- Ô gõ nhanh ---- */
+.quick { display: flex; gap: 8px; margin: 4px 0 6px; }
+.quick-input {
+  flex: 1; min-width: 0; padding: 14px 14px; border-radius: 14px; font-size: 17px;
+  border: 1.5px solid var(--accent); background: var(--card); color: var(--text);
+}
+.quick-input:focus { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.quick-go {
+  border: 0; border-radius: 14px; padding: 0 20px; font-weight: 700; font-size: 16px;
+  background: var(--accent); color: #fff;
+}
+.quick-go:disabled { background: var(--line); color: var(--muted); }
+.quick-err { color: var(--chi); font-size: 13.5px; margin: 4px 2px 8px; }
+.quick-ex { margin: 6px 0 4px; }
+.manual-toggle {
+  width: 100%; margin: 14px 0 4px; padding: 10px; border: 0; border-radius: 12px;
+  background: var(--card); color: var(--accent); font-size: 14px; font-weight: 600;
+}
+.entry .seg { margin-top: 8px; }
+.legend li.tap { cursor: pointer; }
+.pie path, .pie circle { cursor: pointer; }
+
+/* Dòng báo "Đã ghi" có nút Hoàn tác */
+.toast {
+  display: flex; align-items: center; gap: 12px; max-width: calc(100% - 24px);
+  border-radius: 14px; padding: 10px 12px 10px 14px; bottom: 70px; font-size: 13.5px;
+}
+.toast-h { font-weight: 700; margin-bottom: 2px; }
+.toast-lines { text-align: left; }
+.toast-undo {
+  border: 0; border-radius: 10px; padding: 8px 12px; background: #ffffff22; color: #fff;
+  font-weight: 700; font-size: 14px; white-space: nowrap;
+}

@@ -13,9 +13,25 @@ export function selectable(categories: Category[], kind: Kind): Category[] {
 
 export function labelOf(c: Category, categories: Category[]): string {
   const parent = c.parentId ? categories.find((p) => p.id === c.parentId) : undefined
-  if (!parent) return c.name
+  // Nhóm chỉ để chứa (container) thì tên con tự nói đủ nghĩa, ví dụ "Xăng xe" chứ không "Di chuyển · Xăng xe".
+  if (!parent || parent.container) return c.name
   // "Tiền điện" nằm trong nhóm "Điện" thì chỉ cần "Tiền điện".
   return c.name.toLowerCase().includes(parent.name.toLowerCase()) ? c.name : `${parent.name} · ${c.name}`
+}
+
+/** Đường đi từ nhóm lớn đến mục, ví dụ "Di chuyển › Xăng xe". Bỏ tầng trùng tên ("Điện" › "Tiền điện"). */
+export function pathOf(c: Category, categories: Category[]): string {
+  const chain: Category[] = []
+  let cur: Category | undefined = c
+  while (cur) {
+    chain.unshift(cur)
+    const pid: string | null = cur.parentId
+    cur = pid ? categories.find((x) => x.id === pid) : undefined
+  }
+  const names = chain.map((x) => x.name)
+  return names
+    .filter((n, i) => i === names.length - 1 || !names[i + 1].toLowerCase().includes(n.toLowerCase()))
+    .join(' › ')
 }
 
 /** Sắp theo số lần dùng (nhiều lên đầu), cùng số lần thì giữ thứ tự danh mục. */
