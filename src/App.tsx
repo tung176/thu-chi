@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DayView } from './DayView'
 import { Entry } from './Entry'
 import { MonthTable } from './MonthTable'
+import { MonthStart } from './MonthStart'
 import { Overview } from './Overview'
 import { Settings } from './Settings'
 import { CATEGORIES } from './data/categories'
@@ -16,7 +17,7 @@ import {
 } from './lib/sync'
 import type { Category, History, Txn } from './types'
 
-type Tab = 'entry' | 'days' | 'overview' | 'table' | 'settings'
+type Tab = 'entry' | 'days' | 'overview' | 'table' | 'month' | 'settings'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -263,7 +264,9 @@ export default function App() {
           ? 'Tổng quan'
           : tab === 'table'
             ? 'Bảng tháng'
-            : 'Cài đặt'
+            : tab === 'month'
+              ? 'Đầu tháng'
+              : 'Cài đặt'
 
   return (
     <div className="app">
@@ -280,6 +283,13 @@ export default function App() {
             {syncLabel}
           </button>
         )}
+        <button
+          className={`gear ${tab === 'settings' ? 'on' : ''}${syncLabel ? '' : ' push'}`}
+          onClick={() => setTab('settings')}
+          aria-label="Cài đặt"
+        >
+          ⚙
+        </button>
       </header>
       <main className="main">
         {tab === 'entry' && (
@@ -305,6 +315,17 @@ export default function App() {
             <MonthTable categories={categories} txns={txns} months={months} currentMonth={thisMonth} />
           </>
         )}
+        {tab === 'month' && (
+          <MonthStart
+            categories={categories}
+            txns={txns}
+            thisMonth={thisMonth}
+            today={todayStr}
+            onAdd={addTxn}
+            onAddCategory={addCategory}
+            onRemoveCategory={removeCategory}
+          />
+        )}
         {tab === 'settings' && (
           <Settings
             onImported={reload}
@@ -327,8 +348,8 @@ export default function App() {
         <button className={tab === 'table' ? 'on' : ''} onClick={() => setTab('table')}>
           Bảng tháng
         </button>
-        <button className={tab === 'settings' ? 'on' : ''} onClick={() => setTab('settings')}>
-          Cài đặt
+        <button className={tab === 'month' ? 'on' : ''} onClick={() => setTab('month')}>
+          Đầu tháng
         </button>
       </nav>
     </div>

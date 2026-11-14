@@ -10,6 +10,8 @@ export interface Category {
   archived?: boolean
   /** Nhóm chỉ để chứa mục con (ví dụ "Phát sinh"), không chọn trực tiếp khi nhập. */
   container?: boolean
+  /** Kế hoạch trả góp của mục này (nếu mục là một khoản trả góp). */
+  plan?: { perMonth: number; periods: number; firstMonth: string; paidBefore: number }
 }
 
 export interface Txn {

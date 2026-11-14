@@ -4,6 +4,7 @@ import type { Category, Txn } from '../types'
 import { CATEGORIES } from '../data/categories'
 import { importBackup, type ImportResult } from './backup'
 import { loadCategories, loadTxns } from './db'
+import { parsePlanName, planName } from './plan'
 
 export class SyncError extends Error {}
 
@@ -52,12 +53,14 @@ interface State {
   lastPushed: number
   /** Lần sao lưu thành công gần nhất (mili giây). */
   lastAt: number
+  /** Dấu vân tay của danh mục tự tạo đã đẩy lần cuối, để biết khi nào danh mục (ví dụ kế hoạch trả góp) đổi. */
+  catSig?: string
 }
 
 export function getSyncState(): State {
   try {
     const s = JSON.parse(read(K_STATE) || '{}') as Partial<State>
-    return { fullPushed: !!s.fullPushed, lastPushed: s.lastPushed ?? 0, lastAt: s.lastAt ?? 0 }
+    return { fullPushed: !!s.fullPushed, lastPushed: s.lastPushed ?? 0, lastAt: s.lastAt ?? 0, catSig: s.catSig }
   } catch {
     return { fullPushed: false, lastPushed: 0, lastAt: 0 }
   }
@@ -131,7 +134,11 @@ export function toRow(t: Txn, cats: Category[]): Row {
   }
   const loai = cat?.kind === 'thu' ? 'Thu' : 'Chi'
   const group = chain[0]?.name ?? 'Không rõ'
-  const item = chain.length > 1 ? chain[chain.length - 1].name : ''
+  // Mục: mọi tầng từ dưới nhóm lớn đến mục nhỏ, bỏ tầng trùng tên ("Điện" rồi "Tiền điện" chỉ giữ "Tiền điện").
+  const mid = chain.slice(1).map((c) => c.name)
+  const item = mid
+    .filter((n, i) => i === mid.length - 1 || !mid[i + 1].toLowerCase().includes(n.toLowerCase()))
+    .join(' › ')
   // Nội dung: Thu hoặc Chi, rồi nhóm lớn, mục nhỏ, và nội dung bạn đã gõ.
   const content = [loai, group, item, t.note].filter(Boolean).join(' - ')
   const del = !!t.deleted
@@ -170,17 +177,25 @@ export async function pushNow(force = false): Promise<{ pushed: number }> {
   const st = force ? { ...getSyncState(), fullPushed: false } : getSyncState()
   const [all, cats] = await Promise.all([loadTxns(), allCategories()])
   const pend = pendingOf(all, st)
-  if (pend.length === 0) return { pushed: 0 }
 
+  // Danh mục tự tạo, kể cả kế hoạch trả góp (ghi vào tên dạng "Máy ảnh [853000|12|2026-06|5]").
   const custom = cats
     .filter((c) => c.id.startsWith('u-'))
-    .map((c) => [c.id, c.name, c.kind, c.parentId ?? ''])
+    .map((c) => [c.id, c.plan ? planName(c.name, c.plan) : c.name, c.kind, c.parentId ?? ''])
+  const sig = JSON.stringify(custom)
+  const catsChanged = custom.length > 0 && sig !== st.catSig
 
+  if (pend.length === 0 && !catsChanged) return { pushed: 0 }
+
+  if (pend.length === 0) {
+    // Chỉ danh mục đổi (ví dụ vừa thêm kế hoạch trả góp): đẩy riêng danh mục.
+    await post('upsert', { rows: [], categories: custom })
+  }
   for (let i = 0; i < pend.length; i += CHUNK) {
     await post('upsert', { rows: pend.slice(i, i + CHUNK).map((t) => toRow(t, cats)), categories: custom })
   }
   const lastPushed = Math.max(st.lastPushed, ...pend.map((t) => t.updatedAt ?? 0))
-  setState({ fullPushed: true, lastPushed, lastAt: Date.now() })
+  setState({ fullPushed: true, lastPushed, lastAt: Date.now(), catSig: sig })
   return { pushed: pend.length }
 }
 
@@ -197,7 +212,10 @@ export async function pullNow(): Promise<ImportResult> {
       app: 'thu-chi',
       version: 1,
       exportedAt: new Date().toISOString(),
-      categories: data.categories.map((c) => ({ id: c.id, name: c.name, kind: c.kind, parentId: c.parentId || null })),
+      categories: data.categories.map((c) => {
+        const p = parsePlanName(c.name)
+        return { id: c.id, name: p ? p.label : c.name, kind: c.kind, parentId: c.parentId || null, plan: p?.plan }
+      }),
       txns: data.txns,
     }),
   )
