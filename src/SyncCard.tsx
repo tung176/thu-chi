@@ -1,9 +1,13 @@
 import { useState } from 'react'
+import { loadTxns } from './lib/db'
 import {
   autoSyncOn,
   clearSyncConfig,
   getSyncSecret,
   getSyncUrl,
+  isSyncUrl,
+  makeSetupCode,
+  parseSetupCode,
   pullNow,
   setAutoSync,
   setSyncConfig,
@@ -49,8 +53,48 @@ export function SyncCard({ sync, onSyncNow, onSyncConfigChanged, onImported }: P
     }
   }
 
+  const [codeIn, setCodeIn] = useState('')
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(makeSetupCode())
+      setMsg({
+        ok: true,
+        text: 'Đã sao chép mã cài đặt. Dán vào Bitwarden hoặc Ghi chú để chuyển sang iPhone. Mã này chứa mã bí mật nên coi như mật khẩu, dùng xong hãy xóa khỏi Ghi chú.',
+      })
+    } catch {
+      setMsg({ ok: false, text: 'Không sao chép được. Hãy thử lại hoặc cho phép dán trong trình duyệt.' })
+    }
+  }
+
+  /** Dán mã cài đặt từ máy tính: điền địa chỉ và mã, kết nối, và nếu máy này còn trống thì kéo lịch sử về luôn. */
+  const applyCode = () => {
+    const parsed = parseSetupCode(codeIn)
+    if (!parsed) {
+      setMsg({ ok: false, text: 'Mã cài đặt chưa đúng. Mã bắt đầu bằng "thuchi1:" và phải dán đủ, không thiếu ký tự.' })
+      return
+    }
+    setUrl(parsed.url)
+    setSecret(parsed.secret)
+    setSyncConfig(parsed.url, parsed.secret)
+    setCodeIn('')
+    onSyncConfigChanged()
+    void run(async () => {
+      const rows = await testSync()
+      if ((await loadTxns()).length === 0) {
+        const r = await pullNow()
+        onImported()
+        onSyncConfigChanged()
+        setMsg({ ok: true, text: `Đã kết nối và khôi phục ${r.added} khoản từ Sheet (Sheet có ${rows} khoản).` })
+      } else {
+        await onSyncNow(false)
+        setMsg({ ok: true, text: `Đã kết nối (Sheet có ${rows} khoản). Dữ liệu trong máy được giữ nguyên và đã sao lưu.` })
+      }
+    })
+  }
+
   const save = () => {
-    if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url.trim())) {
+    if (!isSyncUrl(url)) {
       setMsg({
         ok: false,
         text: 'Địa chỉ phải có dạng https://script.google.com/macros/s/…/exec (lấy ở bước Đăng tải trong Apps Script).',
@@ -123,6 +167,28 @@ export function SyncCard({ sync, onSyncNow, onSyncConfigChanged, onImported }: P
         trong Sheet. Không cần đăng nhập Google trong app. Mất mạng thì app giữ lại và gửi sau.
       </p>
 
+      {!saved && (
+        <div className="code-box">
+          <div className="code-title">Có mã cài đặt từ máy tính?</div>
+          <p className="muted small">
+            Trên máy tính, mở mục này và bấm "Sao chép mã cài đặt cho điện thoại". Dán mã vào đây là xong, khỏi nhập từng ô.
+          </p>
+          <input
+            className="note"
+            placeholder="thuchi1:..."
+            value={codeIn}
+            onChange={(e) => setCodeIn(e.target.value)}
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            autoComplete="off"
+          />
+          <button className="save thu" disabled={!codeIn.trim() || busy} onClick={applyCode}>
+            {busy ? 'Đang kết nối…' : 'Áp dụng mã cài đặt'}
+          </button>
+        </div>
+      )}
+
       <label className="field">
         Địa chỉ Apps Script
         <input
@@ -153,6 +219,11 @@ export function SyncCard({ sync, onSyncNow, onSyncConfigChanged, onImported }: P
       <button className="save thu" disabled={!url.trim() || !secret.trim() || busy} onClick={save}>
         {busy ? 'Đang kết nối…' : saved && !dirty ? 'Kiểm tra lại kết nối' : 'Lưu và kết nối'}
       </button>
+      {saved && !dirty && (
+        <button className="chip big copy-code" disabled={busy} onClick={() => void copyCode()}>
+          Sao chép mã cài đặt cho điện thoại
+        </button>
+      )}
       {msg && <div className={msg.ok ? 'msg ok' : 'msg bad'}>{msg.text}</div>}
       <div className="muted small sync-status">Trạng thái: {statusText}</div>
 

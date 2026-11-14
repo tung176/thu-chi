@@ -215,3 +215,35 @@ export interface SyncStatus {
   msg: string
   pending: number
 }
+
+// ---------- Mã cài đặt: chuyển địa chỉ và mã bí mật sang điện thoại bằng một lần dán ----------
+const CODE_PREFIX = 'thuchi1:'
+const URL_RE = /^https:\/\/script\.google\.com\/.+\/exec$/
+
+export const isSyncUrl = (u: string) => URL_RE.test(u.trim())
+
+/** Đóng gói địa chỉ và mã bí mật đang lưu thành một chuỗi để dán sang máy khác. Coi nó như mật khẩu. */
+export function makeSetupCode(): string {
+  const raw = JSON.stringify({ u: getSyncUrl(), s: getSyncSecret() })
+  const bytes = new TextEncoder().encode(raw)
+  let bin = ''
+  bytes.forEach((b) => (bin += String.fromCharCode(b)))
+  return CODE_PREFIX + btoa(bin)
+}
+
+/** Đọc mã cài đặt; trả null nếu mã sai hoặc hỏng. */
+export function parseSetupCode(code: string): { url: string; secret: string } | null {
+  const c = code.trim()
+  if (!c.startsWith(CODE_PREFIX)) return null
+  try {
+    const bin = atob(c.slice(CODE_PREFIX.length))
+    const o = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (ch) => ch.charCodeAt(0)))) as {
+      u?: string
+      s?: string
+    }
+    if (!o.u || !o.s || !isSyncUrl(o.u) || o.s.length < 12) return null
+    return { url: o.u, secret: o.s }
+  } catch {
+    return null
+  }
+}
