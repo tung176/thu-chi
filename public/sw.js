@@ -2,7 +2,7 @@
 // - Trang chính: ưu tiên mạng (để nhận bản mới), mất mạng thì dùng bản đã lưu.
 // - Tệp tĩnh (js, css, ảnh): ưu tiên bản đã lưu cho nhanh.
 // Dữ liệu thu chi nằm trong IndexedDB, không đi qua service worker này.
-const CACHE = 'thu-chi-v2'
+const CACHE = 'thu-chi-v3'
 
 self.addEventListener('install', () => self.skipWaiting())
 
@@ -28,6 +28,8 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return
   const url = new URL(req.url)
   if (url.origin !== self.location.origin) return
+  // Yêu cầu kiểm tra bản mới của app (có tham số v) luôn đi thẳng ra mạng, không lưu vào bộ nhớ đệm.
+  if (url.searchParams.has('v')) return
 
   if (req.mode === 'navigate') {
     event.respondWith(

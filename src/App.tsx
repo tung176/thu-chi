@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { DayView } from './DayView'
 import { Entry } from './Entry'
 import { MonthTable } from './MonthTable'
 import { Overview } from './Overview'
@@ -15,13 +16,14 @@ import {
 } from './lib/sync'
 import type { Category, History, Txn } from './types'
 
-type Tab = 'entry' | 'overview' | 'table' | 'settings'
+type Tab = 'entry' | 'days' | 'overview' | 'table' | 'settings'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
 // Tháng hiện tại theo lịch của máy, tính một lần khi mở app.
 const NOW = new Date()
 const thisMonth = `${NOW.getFullYear()}-${pad(NOW.getMonth() + 1)}`
+const todayStr = `${thisMonth}-${pad(NOW.getDate())}`
 
 /**
  * Danh mục của bản app (nhóm, tên, cách xếp) luôn lấy theo code để cập nhật được khi app đổi;
@@ -191,6 +193,37 @@ export default function App() {
     return 'Chưa sao lưu'
   })()
 
+  // ----- Có bản mới của app trên mạng: báo để bạn bấm cập nhật (không tự tải lại khi bạn đang gõ) -----
+  const [newVersion, setNewVersion] = useState(false)
+  useEffect(() => {
+    if (!import.meta.env.PROD) return
+    const current = [...document.scripts]
+      .map((s) => s.src)
+      .find((s) => /assets\/index-[^/]+\.js/.test(s))
+      ?.match(/index-[^/]+\.js/)?.[0]
+    if (!current) return
+    const check = async () => {
+      try {
+        // Tham số v để yêu cầu này luôn đi thẳng ra mạng, không bị lấy từ bộ nhớ đệm.
+        const r = await fetch(`${import.meta.env.BASE_URL}index.html?v=${Date.now()}`, { cache: 'no-store' })
+        const m = (await r.text()).match(/assets\/(index-[^"']+\.js)/)
+        if (m && m[1] !== current) setNewVersion(true)
+      } catch {
+        // không có mạng thì thôi
+      }
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void check()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    void check()
+    const timer = setInterval(check, 30 * 60 * 1000)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      clearInterval(timer)
+    }
+  }, [])
+
   const { months, latest } = useMemo(() => {
     if (!txns || txns.length === 0) return { months: [thisMonth], latest: thisMonth }
     const ms = txns.map((t) => t.date.slice(0, 7)).sort()
@@ -222,10 +255,24 @@ export default function App() {
   }
 
   const title =
-    tab === 'entry' ? 'Nhập' : tab === 'overview' ? 'Tổng quan' : tab === 'table' ? 'Bảng tháng' : 'Cài đặt'
+    tab === 'entry'
+      ? 'Nhập'
+      : tab === 'days'
+        ? 'Theo ngày'
+        : tab === 'overview'
+          ? 'Tổng quan'
+          : tab === 'table'
+            ? 'Bảng tháng'
+            : 'Cài đặt'
 
   return (
     <div className="app">
+      {newVersion && (
+        <div className="update-bar" role="status">
+          <span>Có bản mới của app.</span>
+          <button onClick={() => window.location.reload()}>Cập nhật</button>
+        </div>
+      )}
       <header className="topbar">
         <h1>{title}</h1>
         {syncLabel && (
@@ -245,6 +292,9 @@ export default function App() {
             onAddCategory={addCategory}
             onRemoveCategory={removeCategory}
           />
+        )}
+        {tab === 'days' && (
+          <DayView categories={categories} txns={txns} months={months} thisMonth={thisMonth} today={todayStr} />
         )}
         {tab === 'overview' && (
           <Overview categories={categories} txns={txns} months={months} initialMonth={latest} />
@@ -267,6 +317,9 @@ export default function App() {
       <nav className="tabbar">
         <button className={tab === 'entry' ? 'on' : ''} onClick={() => setTab('entry')}>
           Nhập
+        </button>
+        <button className={tab === 'days' ? 'on' : ''} onClick={() => setTab('days')}>
+          Theo ngày
         </button>
         <button className={tab === 'overview' ? 'on' : ''} onClick={() => setTab('overview')}>
           Tổng quan

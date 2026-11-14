@@ -346,3 +346,34 @@ input, button, select, textarea { max-width: 100%; min-width: 0; }
 .field input, .code-box input, .card input.note { width: 100%; }
 .sync-pill { white-space: nowrap; max-width: 60%; overflow: hidden; text-overflow: ellipsis; }
 .msg, .small, .card p { overflow-wrap: anywhere; }
+
+/* ---- Màn hình Theo ngày ---- */
+.notice { font-size: 13px; line-height: 1.45; margin: 4px 2px 12px; }
+.days { list-style: none; margin: 0; padding: 0; background: var(--card); border-radius: 12px; overflow: hidden; }
+.day { border-bottom: 1px solid var(--line); }
+.day:last-child { border-bottom: 0; }
+.day-row {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px; border: 0; background: none;
+  color: var(--text); text-align: left; font-size: 15px;
+}
+.day-main { flex: 1; min-width: 0; }
+.day-name { font-weight: 600; }
+.day-today { margin-left: 8px; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--group-bg); padding: 2px 7px; border-radius: 999px; }
+.day-sub { font-size: 12px; margin-top: 2px; }
+.day-amt { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 14px; }
+.day-bar { height: 3px; margin: -4px 12px 8px; background: var(--group-bg); border-radius: 2px; overflow: hidden; }
+.day-bar div { height: 100%; background: var(--chi); border-radius: 2px; opacity: .7; }
+.day-items { list-style: none; margin: 0; padding: 0 12px 8px 22px; }
+.day-items li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.di-main { min-width: 0; overflow-wrap: anywhere; }
+.di-sub { font-size: 12px; margin-top: 2px; }
+.di-amt { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+
+/* Thanh tab 5 mục và thanh báo có bản mới */
+.tabbar button { font-size: 13px; padding: 12px 0; }
+.update-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 14px;
+  background: var(--accent); color: #fff; font-size: 14px;
+}
+.update-bar button { border: 0; border-radius: 999px; padding: 6px 14px; background: #fff; color: var(--accent); font-weight: 700; font-size: 14px; }
+html { touch-action: manipulation; }
