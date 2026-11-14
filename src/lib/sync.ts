@@ -178,7 +178,7 @@ export async function pushNow(force = false): Promise<{ pushed: number }> {
   const [all, cats] = await Promise.all([loadTxns(), allCategories()])
   const pend = pendingOf(all, st)
 
-  // Danh mục tự tạo, kể cả kế hoạch trả góp (ghi vào tên dạng "Máy ảnh [853000|12|2026-06|5]").
+  // Danh mục tự tạo, kể cả kế hoạch trả góp (ghi vào tên dạng "Tủ lạnh [1500000|12|2026-01|3]").
   const custom = cats
     .filter((c) => c.id.startsWith('u-'))
     .map((c) => [c.id, c.plan ? planName(c.name, c.plan) : c.name, c.kind, c.parentId ?? ''])

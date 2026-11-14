@@ -1,5 +1,5 @@
 // Kế hoạch trả góp: lưu ngay trong danh mục (mục con của "Tiền trả góp / bảo dưỡng").
-// Trên Google Sheets, kế hoạch hiện trong tên mục dạng "Máy ảnh [853000|12|2026-06|5]" nên đọc được bằng mắt.
+// Trên Google Sheets, kế hoạch hiện trong tên mục dạng "Tủ lạnh [1500000|12|2026-01|3]" nên đọc được bằng mắt.
 import type { Category, Txn } from '../types'
 
 export interface Plan {
