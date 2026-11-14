@@ -330,3 +330,5 @@ input, button { font-size: 16px; touch-action: manipulation; }
 .topbar { display: flex; align-items: center; }
 .sync-status { margin: 10px 0 0; }
 .danger-link { color: var(--chi); margin-top: 10px; display: block; }
+.adv { margin-top: 12px; }
+.adv summary { cursor: pointer; color: var(--accent); font-size: 14px; padding: 6px 0; }

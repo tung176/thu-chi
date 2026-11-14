@@ -63,14 +63,16 @@ export function SyncCard({ sync, onSyncNow, onSyncConfigChanged, onImported }: P
     }
     setSyncConfig(url, secret)
     onSyncConfigChanged()
-    setMsg({ ok: true, text: 'Đã lưu. Bấm "Thử kết nối" để kiểm tra.' })
-  }
-
-  const test = () =>
-    run(async () => {
+    // Lưu xong thì kiểm tra kết nối và sao lưu lần đầu luôn, không cần bấm thêm nút nào.
+    void run(async () => {
       const rows = await testSync()
-      setMsg({ ok: true, text: `Kết nối tốt. Sheet đang có ${rows} khoản.` })
+      await onSyncNow(false)
+      setMsg({
+        ok: true,
+        text: `Đã kết nối (Sheet đang có ${rows} khoản) và sao lưu xong. Từ giờ app tự sao lưu, bạn không cần bấm gì nữa.`,
+      })
     })
+  }
 
   const push = (force: boolean) =>
     run(async () => {
@@ -148,28 +150,32 @@ export function SyncCard({ sync, onSyncNow, onSyncConfigChanged, onImported }: P
           autoComplete="off"
         />
       </label>
-      <button className="save thu" disabled={!url.trim() || !secret.trim() || !dirty} onClick={save}>
-        Lưu cấu hình
+      <button className="save thu" disabled={!url.trim() || !secret.trim() || busy} onClick={save}>
+        {busy ? 'Đang kết nối…' : saved && !dirty ? 'Kiểm tra lại kết nối' : 'Lưu và kết nối'}
       </button>
-
-      <div className="row2">
-        <button className="chip big" disabled={!saved || dirty || busy} onClick={() => void test()}>
-          Thử kết nối
-        </button>
-        <button className="chip big" disabled={!saved || dirty || busy} onClick={() => void push(false)}>
-          Sao lưu ngay
-        </button>
-      </div>
-      <div className="row2">
-        <button className="chip big" disabled={!saved || dirty || busy} onClick={restore}>
-          Khôi phục từ Sheet
-        </button>
-        <button className="chip big" disabled={!saved || dirty || busy} onClick={() => void push(true)}>
-          Ghi lại toàn bộ
-        </button>
-      </div>
       {msg && <div className={msg.ok ? 'msg ok' : 'msg bad'}>{msg.text}</div>}
       <div className="muted small sync-status">Trạng thái: {statusText}</div>
+
+      <details className="adv">
+        <summary>Nâng cao</summary>
+        <p className="muted small">
+          Bình thường bạn không cần dùng các nút này vì app tự sao lưu. Chỉ dùng khi muốn sao lưu ngay lập tức, đổi
+          điện thoại, hoặc sau khi mình đổi cách ghép nội dung.
+        </p>
+        <div className="row2">
+          <button className="chip big" disabled={!saved || dirty || busy} onClick={() => void push(false)}>
+            Sao lưu ngay
+          </button>
+          <button className="chip big" disabled={!saved || dirty || busy} onClick={restore}>
+            Khôi phục từ Sheet
+          </button>
+        </div>
+        <div className="row2">
+          <button className="chip big" disabled={!saved || dirty || busy} onClick={() => void push(true)}>
+            Ghi lại toàn bộ
+          </button>
+        </div>
+      </details>
 
       <label className="toggle">
         <input
