@@ -65,7 +65,7 @@ export const KEYWORDS: Record<string, string[]> = {
 
   // ----- CHI: giải trí, du lịch, thuê bao -----
   'chi-dulich': ['du lịch', 'đi chơi xa', 'tour', 'khách sạn', 'homestay', 'resort', 'vé tham quan', 'nghỉ dưỡng', 'booking', 'tiền tour'],
-  'chi-phim': ['xem phim', 'rạp', 'cgv', 'vui chơi', 'karaoke', 'game', 'nạp game', 'khu vui chơi', 'công viên', 'bowling', 'giải trí'],
+  'chi-phim': ['câu cá', 'đi câu', 'golf', 'chơi golf', 'cắm trại', 'dã ngoại', 'xem phim','rạp', 'cgv', 'vui chơi', 'karaoke', 'game', 'nạp game', 'khu vui chơi', 'công viên', 'bowling', 'giải trí'],
   'chi-thuebao': ['netflix', 'youtube', 'spotify', 'icloud', 'google one', 'thuê bao', 'gia hạn', 'subscription', 'disney'],
 
   // ----- CHI: quan hệ, hiếu hỉ -----

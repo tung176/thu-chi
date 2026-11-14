@@ -297,3 +297,23 @@ input, button { font-size: 16px; touch-action: manipulation; }
   border: 0; border-radius: 10px; padding: 8px 12px; background: #ffffff22; color: #fff;
   font-weight: 700; font-size: 14px; white-space: nowrap;
 }
+
+/* ---- Cài đặt AI ---- */
+.settings .small { font-size: 13px; margin: 4px 0 10px; line-height: 1.45; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); margin: 10px 0; }
+.field .note { width: 100%; font-size: 16px; color: var(--text); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; color: var(--text); }
+.row2 { display: flex; gap: 8px; margin: 10px 0 4px; }
+.chip.big { flex: 1; padding: 11px 12px; font-size: 15px; text-align: center; }
+.chip.big:disabled { opacity: .45; }
+.chip.danger { color: var(--chi); }
+.msg { margin-top: 8px; padding: 10px 12px; border-radius: 10px; font-size: 14px; line-height: 1.4; }
+.msg.ok { background: var(--thu-bg); color: var(--thu); }
+.msg.bad { background: var(--chi-bg); color: var(--chi); }
+.toggle { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 15px; }
+.toggle input { width: 22px; height: 22px; }
+.usage { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; margin: 6px 0; }
+.usage b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+.usage .muted { font-size: 12px; }
+.linkbtn { border: 0; background: none; color: var(--accent); font-size: 14px; }
+.settings .save { margin-top: 6px; }

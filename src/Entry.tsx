@@ -12,7 +12,9 @@ import {
   timeStr,
   todayStr,
 } from './lib/entry'
-import { makeCategory, newCategoryName } from './lib/match'
+import { makeCategory, newCategoryName, normalize } from './lib/match'
+import { aiReady, AiError, classifyWithAI, type AiResult } from './lib/ai'
+import { PHATSINH } from './data/categories'
 import { parseQuick } from './lib/quick'
 
 interface Props {
@@ -40,6 +42,9 @@ const EXAMPLES = ['đổ xăng 70k', 'cà phê 30k, ăn trưa 50k', 'hôm qua mu
 /** Đang chọn danh mục để làm gì: gán cho khoản đang nhập tay, hoặc đổi mục của một khoản đã lưu. */
 type Picking = null | { for: 'entry' } | { for: 'txn'; id: string }
 
+/** Cách một khoản được xếp: '' = mục có sẵn, 'new' = mục mới app tạo, 'ai' = AI chọn mục có sẵn, 'ai-new' = AI đề xuất mục mới. */
+type Tag = '' | 'new' | 'ai' | 'ai-new'
+
 interface Undo {
   txnIds: string[]
   catIds: string[]
@@ -58,6 +63,7 @@ export function Entry({
   // ----- gõ nhanh -----
   const [quick, setQuick] = useState('')
   const [qErr, setQErr] = useState('')
+  const [busy, setBusy] = useState(false)
   const quickRef = useRef<HTMLInputElement>(null)
 
   // ----- nhập tay bằng bàn phím số -----
@@ -93,13 +99,15 @@ export function Entry({
     return c ? pathOf(c, cats) : id
   }
 
-  const line = (cat: Category, amount: number, cats: Category[], isNew: boolean, d?: string) =>
-    `${cat.kind === 'chi' ? 'Chi' : 'Thu'} ${vnd(amount)} · ${pathOf(cat, cats)}${isNew ? ' (mục mới)' : ''}${
-      d && d !== todayStr() ? ` · ${d.slice(8)}/${d.slice(5, 7)}` : ''
-    }`
+  const line = (cat: Category, amount: number, cats: Category[], tag: Tag, d?: string) => {
+    const mark = tag === 'new' ? ' (mục mới)' : tag === 'ai' ? ' · AI xếp' : tag === 'ai-new' ? ' (mục mới · AI)' : ''
+    const when = d && d !== todayStr() ? ` · ${d.slice(8)}/${d.slice(5, 7)}` : ''
+    return `${cat.kind === 'chi' ? 'Chi' : 'Thu'} ${vnd(amount)} · ${pathOf(cat, cats)}${mark}${when}`
+  }
 
   // ===== Gõ nhanh: "đổ xăng 70k, cà phê 30k hôm qua" =====
-  const submitQuick = () => {
+  const submitQuick = async () => {
+    if (busy) return
     const text = quick.trim()
     if (!text) return
     const res = parseQuick(text)
@@ -109,6 +117,29 @@ export function Entry({
     }
     setQErr('')
 
+    // 1) Xếp bằng điều đã nhớ, từ điển và tên mục (ngay trong máy, không cần mạng).
+    const local = res.items.map((it) => classify(it.note, categories, txns))
+
+    // 2) Khoản nào chưa xếp được thì nhờ AI, nếu đã có key, đang bật và có mạng.
+    const ai = new Map<string, AiResult | null>()
+    let aiError = ''
+    const unknown = [...new Set(res.items.filter((_, i) => !local[i]).map((it) => it.note))]
+    if (unknown.length > 0 && aiReady()) {
+      setBusy(true)
+      await Promise.all(
+        unknown.map(async (n) => {
+          try {
+            ai.set(n, await classifyWithAI(n, categories))
+          } catch (e) {
+            if (!aiError) aiError = e instanceof AiError ? e.message : 'AI không trả lời.'
+            ai.set(n, null)
+          }
+        }),
+      )
+      setBusy(false)
+    }
+
+    // 3) Ghi.
     let cats = categories
     const createdIds: string[] = []
     const addedIds: string[] = []
@@ -116,13 +147,28 @@ export function Entry({
     const base = Date.now()
 
     res.items.forEach((it, i) => {
-      const hit = classify(it.note, cats, txns)
-      let cat = hit?.category
+      let cat = local[i]?.category
+      let tag: Tag = ''
       if (!cat) {
-        cat = makeCategory(it.note, guessKind(it.note))
-        cats = [...cats, cat]
-        createdIds.push(cat.id)
-        onAddCategory(cat)
+        const r = ai.get(it.note)
+        if (r?.type === 'existing') {
+          cat = r.category
+          tag = 'ai'
+        } else {
+          const kind = r?.type === 'new' ? r.kind : guessKind(it.note)
+          const parentId = r?.type === 'new' ? r.parentId : PHATSINH[kind]
+          const name = r?.type === 'new' ? r.name : it.note
+          // Hai khoản giống nhau trong một câu thì dùng chung một mục mới.
+          const dup = cats.find((c) => c.parentId === parentId && normalize(c.name) === normalize(name))
+          cat = dup ?? makeCategory(name, kind, parentId)
+          if (!dup) {
+            cats = [...cats, cat]
+            createdIds.push(cat.id)
+            onAddCategory(cat)
+          }
+          // Trùng với mục đã có thì không phải "mục mới".
+          tag = dup ? (r?.type === 'new' ? 'ai' : '') : r?.type === 'new' ? 'ai-new' : 'new'
+        }
       }
       const t: Txn = {
         id: crypto.randomUUID(),
@@ -135,11 +181,12 @@ export function Entry({
       }
       onAdd(t)
       addedIds.push(t.id)
-      lines.push(line(cat, it.amount, cats, !hit, it.date))
+      lines.push(line(cat, it.amount, cats, tag, it.date))
     })
 
     showUndo({ txnIds: addedIds, catIds: createdIds, lines })
     setQuick('')
+    if (aiError) setQErr(`AI chưa dùng được: ${aiError} Khoản này đã được ghi vào Chưa phân loại.`)
     quickRef.current?.focus()
   }
 
@@ -189,7 +236,7 @@ export function Entry({
       updatedAt: now.getTime(),
     }
     onAdd(t)
-    showUndo({ txnIds: [t.id], catIds: created, lines: [line(cat, amount, all, isNew, t.date)] })
+    showUndo({ txnIds: [t.id], catIds: created, lines: [line(cat, amount, all, isNew ? 'new' : '', t.date)] })
     setExpr('')
     setCatId(null)
     setNote('')
@@ -233,7 +280,7 @@ export function Entry({
         className="quick"
         onSubmit={(e) => {
           e.preventDefault()
-          submitQuick()
+          void submitQuick()
         }}
       >
         <input
@@ -251,8 +298,8 @@ export function Entry({
           spellCheck={false}
           aria-label="Gõ nội dung và số tiền"
         />
-        <button className="quick-go" type="submit" disabled={!quick.trim()}>
-          Ghi
+        <button className="quick-go" type="submit" disabled={!quick.trim() || busy}>
+          {busy ? 'AI…' : 'Ghi'}
         </button>
       </form>
       {qErr ? (

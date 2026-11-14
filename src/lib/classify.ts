@@ -56,11 +56,18 @@ export function classify(
   if (memHit) return { category: (memHit as { category: Category }).category, via: 'memory' }
 
   // 2. Từ điển từ khóa: cụm từ dài nhất khớp nguyên từ thì thắng.
-  const padded = ` ${norm} `
+  // Câu có gõ dấu thì so khớp giữ nguyên dấu (để "cuối" không nhầm với "cưới", "xăng" không nhầm với "tầng");
+  // câu gõ không dấu thì mới bỏ dấu khi so.
+  const keepMarks = /\P{ASCII}/u.test(note)
+  const fold = (s: string) =>
+    keepMarks
+      ? s.toLowerCase().normalize('NFC').replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
+      : normalize(s)
+  const padded = ` ${fold(note)} `
   let dictHit: { category: Category; len: number } | null = null
   for (const c of cands) {
     for (const k of KEYWORDS[c.id] ?? []) {
-      const nk = normalize(k)
+      const nk = fold(k)
       if (nk && padded.includes(` ${nk} `) && (!dictHit || nk.length > dictHit.len))
         dictHit = { category: c, len: nk.length }
     }

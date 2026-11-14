@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { Entry } from './Entry'
 import { MonthTable } from './MonthTable'
 import { Overview } from './Overview'
+import { Settings } from './Settings'
 import { CATEGORIES } from './data/categories'
 import { delCategory, loadCategories, loadTxns, putMany, putTxn, replaceSummary } from './lib/db'
 import type { Category, History, Txn } from './types'
 
-type Tab = 'entry' | 'overview' | 'table'
+type Tab = 'entry' | 'overview' | 'table' | 'settings'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -146,7 +147,8 @@ export default function App() {
     )
   }
 
-  const title = tab === 'entry' ? 'Nhập' : tab === 'overview' ? 'Tổng quan' : 'Bảng tháng'
+  const title =
+    tab === 'entry' ? 'Nhập' : tab === 'overview' ? 'Tổng quan' : tab === 'table' ? 'Bảng tháng' : 'Cài đặt'
 
   return (
     <div className="app">
@@ -174,6 +176,7 @@ export default function App() {
             <MonthTable categories={categories} txns={txns} months={months} currentMonth={thisMonth} />
           </>
         )}
+        {tab === 'settings' && <Settings />}
       </main>
       <nav className="tabbar">
         <button className={tab === 'entry' ? 'on' : ''} onClick={() => setTab('entry')}>
@@ -184,6 +187,9 @@ export default function App() {
         </button>
         <button className={tab === 'table' ? 'on' : ''} onClick={() => setTab('table')}>
           Bảng tháng
+        </button>
+        <button className={tab === 'settings' ? 'on' : ''} onClick={() => setTab('settings')}>
+          Cài đặt
         </button>
       </nav>
     </div>
