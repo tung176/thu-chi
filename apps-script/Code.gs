@@ -7,6 +7,10 @@
  * VIỆC DUY NHẤT BẠN PHẢI SỬA: đặt mã bí mật ở dòng SECRET bên dưới (một câu dài ít nhất 20 ký tự,
  * ví dụ gồm chữ, số và dấu gạch). Cùng mã này sẽ được nhập vào màn Cài đặt của app.
  * Không dùng lại mật khẩu của chỗ khác và không gửi mã này cho ai.
+ *
+ * @OnlyCurrentDoc
+ * (Dòng trên giới hạn quyền: đoạn mã này chỉ được đụng vào đúng Google Sheets chứa nó,
+ * không đọc được các file khác trong Drive của bạn.)
  */
 var SECRET = 'DOI-CHUOI-NAY-THANH-MA-BI-MAT-CUA-BAN';
 
