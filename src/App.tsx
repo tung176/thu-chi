@@ -1,10 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Entry } from './Entry'
 import { MonthTable } from './MonthTable'
 import { Overview } from './Overview'
 import { Settings } from './Settings'
 import { CATEGORIES } from './data/categories'
 import { delCategory, loadCategories, loadTxns, putMany, putTxn, replaceSummary } from './lib/db'
+import {
+  autoSyncOn,
+  countPending,
+  getSyncState,
+  pushNow,
+  syncReady,
+  type SyncStatus,
+} from './lib/sync'
 import type { Category, History, Txn } from './types'
 
 type Tab = 'entry' | 'overview' | 'table' | 'settings'
@@ -124,6 +132,65 @@ export default function App() {
     void putTxn({ ...t, deleted: true, updatedAt: Date.now() })
   }
 
+  // ----- Sao lưu lên Google Sheets (nếu đã nhập địa chỉ Apps Script trong Cài đặt) -----
+  const [sync, setSync] = useState<SyncStatus>(() => ({
+    phase: syncReady() ? 'idle' : 'off',
+    at: getSyncState().lastAt,
+    msg: '',
+    pending: 0,
+  }))
+  const syncing = useRef(false)
+
+  const runSync = useCallback(async (force = false) => {
+    if (!syncReady() || syncing.current) return
+    if (!navigator.onLine) {
+      setSync((s) => ({ ...s, phase: 'idle', msg: 'Chưa có mạng, sẽ sao lưu sau.' }))
+      return
+    }
+    syncing.current = true
+    setSync((s) => ({ ...s, phase: 'syncing', msg: '' }))
+    try {
+      await pushNow(force)
+      setSync({ phase: 'ok', at: getSyncState().lastAt, msg: '', pending: await countPending() })
+    } catch (e) {
+      setSync((s) => ({ ...s, phase: 'error', msg: e instanceof Error ? e.message : 'Lỗi sao lưu.' }))
+    } finally {
+      syncing.current = false
+    }
+  }, [])
+
+  const syncConfigChanged = useCallback(() => {
+    setSync((s) => ({ ...s, phase: syncReady() ? 'idle' : 'off', msg: '', at: getSyncState().lastAt }))
+  }, [])
+
+  // Mỗi lần dữ liệu đổi (và khi mở app): đợi 3 giây rồi đẩy lên Sheet. Có mạng lại thì tự đẩy tiếp.
+  useEffect(() => {
+    if (!txns || !syncReady() || !autoSyncOn()) return
+    void countPending().then((p) => setSync((s) => ({ ...s, pending: p })))
+    const timer = setTimeout(() => void runSync(), 3000)
+    return () => clearTimeout(timer)
+  }, [txns, categories, runSync])
+
+  useEffect(() => {
+    const onOnline = () => {
+      if (autoSyncOn()) void runSync()
+    }
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [runSync])
+
+  const syncLabel = (() => {
+    if (sync.phase === 'off') return ''
+    if (sync.phase === 'syncing') return 'Đang sao lưu…'
+    if (sync.phase === 'error') return 'Lỗi sao lưu'
+    if (sync.pending > 0) return `Chờ sao lưu ${sync.pending}`
+    if (sync.at) {
+      const d = new Date(sync.at)
+      return `Đã sao lưu ${pad(d.getHours())}:${pad(d.getMinutes())}`
+    }
+    return 'Chưa sao lưu'
+  })()
+
   const { months, latest } = useMemo(() => {
     if (!txns || txns.length === 0) return { months: [thisMonth], latest: thisMonth }
     const ms = txns.map((t) => t.date.slice(0, 7)).sort()
@@ -161,6 +228,11 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <h1>{title}</h1>
+        {syncLabel && (
+          <button className={`sync-pill ${sync.phase}`} onClick={() => setTab('settings')} title={sync.msg}>
+            {syncLabel}
+          </button>
+        )}
       </header>
       <main className="main">
         {tab === 'entry' && (
@@ -183,7 +255,14 @@ export default function App() {
             <MonthTable categories={categories} txns={txns} months={months} currentMonth={thisMonth} />
           </>
         )}
-        {tab === 'settings' && <Settings onImported={reload} />}
+        {tab === 'settings' && (
+          <Settings
+            onImported={reload}
+            sync={sync}
+            onSyncNow={(force) => runSync(force)}
+            onSyncConfigChanged={syncConfigChanged}
+          />
+        )}
       </main>
       <nav className="tabbar">
         <button className={tab === 'entry' ? 'on' : ''} onClick={() => setTab('entry')}>

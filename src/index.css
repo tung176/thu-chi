@@ -317,3 +317,16 @@ input, button { font-size: 16px; touch-action: manipulation; }
 .usage .muted { font-size: 12px; }
 .linkbtn { border: 0; background: none; color: var(--accent); font-size: 14px; }
 .settings .save { margin-top: 6px; }
+
+/* ---- Trạng thái sao lưu ở đầu màn hình ---- */
+.sync-pill {
+  margin-left: auto; border: 0; border-radius: 999px; padding: 4px 10px; font-size: 12px;
+  background: var(--card); color: var(--muted);
+}
+.sync-pill.ok { color: var(--thu); }
+.sync-pill.syncing { color: var(--accent); }
+.sync-pill.error { color: var(--chi); background: var(--chi-bg); }
+.sync-pill.idle { color: var(--muted); }
+.topbar { display: flex; align-items: center; }
+.sync-status { margin: 10px 0 0; }
+.danger-link { color: var(--chi); margin-top: 10px; display: block; }

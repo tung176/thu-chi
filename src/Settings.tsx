@@ -12,10 +12,19 @@ import {
   type Usage,
 } from './lib/ai'
 import { exportFile, importBackup } from './lib/backup'
+import type { SyncStatus } from './lib/sync'
+import { SyncCard } from './SyncCard'
 
 const mask = (k: string) => (k ? `••••••••${k.slice(-4)}` : 'Chưa có key')
 
-export function Settings({ onImported }: { onImported: () => void }) {
+interface Props {
+  onImported: () => void
+  sync: SyncStatus
+  onSyncNow: (force: boolean) => Promise<void>
+  onSyncConfigChanged: () => void
+}
+
+export function Settings({ onImported, sync, onSyncNow, onSyncConfigChanged }: Props) {
   const [backupMsg, setBackupMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -176,6 +185,8 @@ export function Settings({ onImported }: { onImported: () => void }) {
         </div>
         <p className="muted small">Số này đếm trên máy này từ lần đặt lại gần nhất, dùng để ước lượng chi phí.</p>
       </section>
+
+      <SyncCard sync={sync} onSyncNow={onSyncNow} onSyncConfigChanged={onSyncConfigChanged} onImported={onImported} />
 
       <section className="card">
         <h2>Sao lưu thủ công</h2>
