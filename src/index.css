@@ -336,3 +336,13 @@ input, button { font-size: 16px; touch-action: manipulation; }
 .code-title { font-weight: 700; font-size: 15px; }
 .code-box .note { margin: 6px 0 8px; }
 .copy-code { width: 100%; margin-top: 10px; }
+
+/* Chống tràn ngang trên Safari iPhone: nội dung không bao giờ rộng hơn màn hình */
+html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+.app { width: 100%; max-width: 100%; overflow-x: hidden; }
+.topbar, .main, .page, .card, .field, .tabbar { min-width: 0; max-width: 100%; }
+.main { overflow-x: hidden; }
+input, button, select, textarea { max-width: 100%; min-width: 0; }
+.field input, .code-box input, .card input.note { width: 100%; }
+.sync-pill { white-space: nowrap; max-width: 60%; overflow: hidden; text-overflow: ellipsis; }
+.msg, .small, .card p { overflow-wrap: anywhere; }
