@@ -1,4 +1,5 @@
 // Tạo biểu tượng app (PNG) không cần thư viện ngoài: node scripts/make-icons.mjs
+// LƯU Ý: biểu tượng hiện dùng là ảnh bàn tay cầm tiền do người dùng cung cấp (public/*.png). Chạy script này sẽ ghi đè bằng biểu tượng túi tiền.
 import { deflateSync } from 'node:zlib'
 import { writeFileSync } from 'node:fs'
 
