@@ -20,9 +20,6 @@ import type { Category, History, Txn } from './types'
 
 type Tab = 'entry' | 'days' | 'overview' | 'table' | 'settings'
 
-/** Mục trong file cũ ghi theo tháng phát sinh, còn tiền nhận hoặc trả rơi vào tháng sau. */
-const LAG_IDS = new Set(['thu-luong', 'thu-dv-t2', 'thu-dv-t3', 'thu-dv-t4', 'chi-dien-tien', 'chi-nuoc-tien'])
-
 const pad = (n: number) => String(n).padStart(2, '0')
 
 // Tháng hiện tại theo lịch của máy, tính một lần khi mở app.
@@ -167,15 +164,15 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [txns])
 
-  // Một lần: trong file cũ, lương, phí dịch vụ, tiền điện và tiền nước ghi ở tháng phát sinh (cuối tháng),
-  // nhưng nhận hoặc trả ở tháng sau. Dời các số tổng hợp đó sang ngày 01 của tháng sau.
+  // Một lần: cột tháng M trong file cũ là khoản thu chi của bảng tháng M nhưng thực hiện ở tháng M+1
+  // (nhận lương tháng M, tiêu tháng M+1). Dời mọi số tổng hợp sang ngày 01 của tháng sau.
   // Khoản đã dời (ngày 01) thì không dời lại.
   const shifted = useRef(false)
   useEffect(() => {
     if (!txns || shifted.current) return
     shifted.current = true
     for (const t of txns) {
-      if (!t.summary || t.deleted || !LAG_IDS.has(t.categoryId)) continue
+      if (!t.summary || t.deleted) continue
       if (Number(t.date.slice(8)) < 28) continue
       updateTxn({ ...t, date: addMonths(t.date.slice(0, 7), 1) + '-01', updatedAt: Date.now() })
     }

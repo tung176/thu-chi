@@ -27,6 +27,8 @@ export function MonthTable({ categories, txns, months, currentMonth }: Props) {
   const [closed, setClosed] = useState<Set<string>>(new Set())
   const [picked, setPicked] = useState<Picked | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
+  // 'all': hiện dòng có số ở bất kỳ tháng nào; 'last': chỉ dòng có số ở tháng mới nhất (cột bên phải).
+  const [scope, setScope] = useState<'all' | 'last'>('last')
   const od = categories.find((c) => c.overdraft)?.overdraft
 
   // Mở lên là cuộn tới tháng hiện tại (bên phải), vẫn cuộn ngược được về các tháng trước.
@@ -44,7 +46,8 @@ export function MonthTable({ categories, txns, months, currentMonth }: Props) {
     })
 
   // Mục không có số nào trong các tháng đang xem thì ẩn đi cho gọn.
-  const hasData = (node: RowNode) => months.some((m) => nodeTotal(node, m, leaf) !== 0)
+  const hasData = (node: RowNode) =>
+    (scope === 'last' ? months.slice(-1) : months).some((m) => nodeTotal(node, m, leaf) !== 0)
   const shown = (nodes: RowNode[]) => nodes.filter(hasData)
 
   const cell = (key: string, value: number, onClick?: () => void, cls = '') => (
@@ -99,6 +102,14 @@ export function MonthTable({ categories, txns, months, currentMonth }: Props) {
 
   return (
     <>
+      <div className="row2">
+        <button className={`chip big ${scope === 'last' ? 'sel' : ''}`} onClick={() => setScope('last')}>
+          Chỉ dòng có số ở tháng mới nhất
+        </button>
+        <button className={`chip big ${scope === 'all' ? 'sel' : ''}`} onClick={() => setScope('all')}>
+          Mọi dòng từng có số
+        </button>
+      </div>
       <div className="scroller" ref={scroller}>
         <table className="grid">
           <thead>
