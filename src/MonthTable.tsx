@@ -10,6 +10,7 @@ import {
   type RowNode,
 } from './lib/aggregate'
 import { monthLabel, TxnSheet, type Picked } from './TxnSheet'
+import { monthLoanStats } from './lib/overdraft'
 
 interface Props {
   categories: Category[]
@@ -26,6 +27,7 @@ export function MonthTable({ categories, txns, months, currentMonth }: Props) {
   const [closed, setClosed] = useState<Set<string>>(new Set())
   const [picked, setPicked] = useState<Picked | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
+  const od = categories.find((c) => c.overdraft)?.overdraft
 
   // Mở lên là cuộn tới tháng hiện tại (bên phải), vẫn cuộn ngược được về các tháng trước.
   useEffect(() => {
@@ -126,6 +128,26 @@ export function MonthTable({ categories, txns, months, currentMonth }: Props) {
                 )
               })}
             </tr>
+            {od && (
+              <>
+                <tr className="row kind">
+                  <th className="name">THẤU CHI (khoản vay, không cộng Thu/Chi)</th>
+                  {months.map((m) => (
+                    <td key={m} className="num" />
+                  ))}
+                </tr>
+                {([
+                  ['Vay (+)', 'drawn'],
+                  ['Trả gốc (−)', 'repaid'],
+                  ['Dư nợ cuối tháng', 'endBalance'],
+                ] as const).map(([label, key]) => (
+                  <tr className="row depth0" key={key}>
+                    <th className="name">{label}</th>
+                    {months.map((m) => cell(m, monthLoanStats(od, m)[key], undefined, 'loan'))}
+                  </tr>
+                ))}
+              </>
+            )}
           </tbody>
         </table>
       </div>

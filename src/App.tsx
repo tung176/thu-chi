@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DayView } from './DayView'
 import { Entry } from './Entry'
 import { MonthTable } from './MonthTable'
-import { MonthStart } from './MonthStart'
 import { Overview } from './Overview'
 import { Settings } from './Settings'
 import { CATEGORIES } from './data/categories'
@@ -16,9 +15,10 @@ import {
   type SyncStatus,
 } from './lib/sync'
 import { loanIntent, nextDay, withLoanEvent } from './lib/overdraft'
+import { addMonths } from './lib/plan'
 import type { Category, History, Txn } from './types'
 
-type Tab = 'entry' | 'days' | 'overview' | 'table' | 'month' | 'settings'
+type Tab = 'entry' | 'days' | 'overview' | 'table' | 'settings'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -164,6 +164,20 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [txns])
 
+  // Một lần: lương trong file cũ ghi ở tháng làm ra lương (cuối tháng), nhưng nhận và tiêu ở tháng sau.
+  // Dời lương tổng hợp sang ngày 01 của tháng sau. Khoản đã dời (ngày 01) thì không dời lại.
+  const shifted = useRef(false)
+  useEffect(() => {
+    if (!txns || shifted.current) return
+    shifted.current = true
+    for (const t of txns) {
+      if (!t.summary || t.deleted || t.categoryId !== 'thu-luong') continue
+      if (Number(t.date.slice(8)) < 28) continue
+      updateTxn({ ...t, date: addMonths(t.date.slice(0, 7), 1) + '-01', updatedAt: Date.now() })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [txns])
+
   // ----- Sao lưu lên Google Sheets (nếu đã nhập địa chỉ Apps Script trong Cài đặt) -----
   const [sync, setSync] = useState<SyncStatus>(() => ({
     phase: syncReady() ? 'idle' : 'off',
@@ -293,9 +307,7 @@ export default function App() {
           ? 'Tổng quan'
           : tab === 'table'
             ? 'Bảng tháng'
-            : tab === 'month'
-              ? 'Đầu tháng'
-              : 'Cài đặt'
+            : 'Cài đặt'
 
   return (
     <div className="app">
@@ -336,24 +348,23 @@ export default function App() {
           <DayView categories={categories} txns={txns} months={months} thisMonth={thisMonth} today={todayStr} />
         )}
         {tab === 'overview' && (
-          <Overview categories={categories} txns={txns} months={months} initialMonth={latest} />
-        )}
-        {tab === 'table' && (
-          <>
-            <p className="hint">Vuốt ngang để xem các tháng. Chạm tên nhóm để mở/gập, chạm một ô số để xem giao dịch.</p>
-            <MonthTable categories={categories} txns={txns} months={months} currentMonth={thisMonth} />
-          </>
-        )}
-        {tab === 'month' && (
-          <MonthStart
+          <Overview
             categories={categories}
             txns={txns}
+            months={months}
+            initialMonth={latest}
             thisMonth={thisMonth}
             today={todayStr}
             onAdd={addTxn}
             onAddCategory={addCategory}
             onRemoveCategory={removeCategory}
           />
+        )}
+        {tab === 'table' && (
+          <>
+            <p className="hint">Vuốt ngang để xem các tháng. Chạm tên nhóm để mở/gập, chạm một ô số để xem giao dịch.</p>
+            <MonthTable categories={categories} txns={txns} months={months} currentMonth={thisMonth} />
+          </>
         )}
         {tab === 'settings' && (
           <Settings
@@ -376,9 +387,6 @@ export default function App() {
         </button>
         <button className={tab === 'table' ? 'on' : ''} onClick={() => setTab('table')}>
           Bảng tháng
-        </button>
-        <button className={tab === 'month' ? 'on' : ''} onClick={() => setTab('month')}>
-          Đầu tháng
         </button>
       </nav>
     </div>

@@ -11,6 +11,7 @@ import {
 import { pathOf } from './lib/entry'
 import { computeGap, GAPS, PIE_CHI, PIE_THU, type PieSlice } from './lib/overview'
 import { TxnSheet, type Picked } from './TxnSheet'
+import { Debts } from './Debts'
 
 interface Props {
   categories: Category[]
@@ -19,11 +20,26 @@ interface Props {
   months: string[]
   /** Tháng mở lên đầu tiên (tháng gần nhất có dữ liệu). */
   initialMonth: string
+  thisMonth: string
+  today: string
+  onAdd: (t: Txn) => void
+  onAddCategory: (c: Category) => void
+  onRemoveCategory: (id: string) => void
 }
 
 const monthTitle = (m: string) => `Tháng ${Number(m.slice(5))}/${m.slice(0, 4)}`
 
-export function Overview({ categories, txns, months, initialMonth }: Props) {
+export function Overview({
+  categories,
+  txns,
+  months,
+  initialMonth,
+  thisMonth,
+  today,
+  onAdd,
+  onAddCategory,
+  onRemoveCategory,
+}: Props) {
   const leaf = useMemo(() => sumByLeafMonth(txns), [txns])
   const thuTree = useMemo(() => buildTree(categories, 'thu'), [categories])
   const chiTree = useMemo(() => buildTree(categories, 'chi'), [categories])
@@ -141,6 +157,16 @@ export function Overview({ categories, txns, months, initialMonth }: Props) {
           </div>
         )
       })}
+
+      <Debts
+        categories={categories}
+        txns={txns}
+        thisMonth={thisMonth}
+        today={today}
+        onAdd={onAdd}
+        onAddCategory={onAddCategory}
+        onRemoveCategory={onRemoveCategory}
+      />
     </div>
   )
 }

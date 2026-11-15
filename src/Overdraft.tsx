@@ -3,7 +3,7 @@ import type { Category, Txn } from './types'
 import { parse } from './lib/amount'
 import { vnd } from './lib/aggregate'
 import { timeStr } from './lib/entry'
-import { balanceOn, interestTo, OD_LABEL, OD_PARENT, type OdEvent, type Overdraft as OdData } from './lib/overdraft'
+import { balanceOn, eventDay, interestTo, nextDay, OD_LABEL, OD_PARENT, type OdEvent, type Overdraft as OdData } from './lib/overdraft'
 
 interface Props {
   categories: Category[]
@@ -23,8 +23,8 @@ const plusDays = (s: string, n: number) =>
   new Date(Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10) + n)).toISOString().slice(0, 10)
 const dmy = (s: string) => `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}`
 
-/** Mặc định ngày bắt đầu tính lãi của khoản rút 14/11/2026: tính từ ngày 15 theo lời bạn. */
-const DEFAULT_START = '2026-11-15'
+/** Khoản rút ngày 14/11/2026; lãi tính từ hôm sau (15/11) theo lời bạn. */
+const DEFAULT_START = '2026-11-14'
 /** 13%/năm là mức trong ví dụ của trang Techcombank, chỉ để ước tính tạm; sửa khi có biên lai. */
 const DEFAULT_RATE = '13'
 
@@ -58,7 +58,7 @@ export function Overdraft({ categories, today, onSave, onRemove, onAddTxn }: Pro
       kind: 'chi',
       parentId: OD_PARENT,
       archived: true,
-      overdraft: { rate: r, events: [{ date: start, amount: a }] },
+      overdraft: { rate: r, events: [{ date: nextDay(start), amount: a }] },
     })
     setMsg('')
   }
@@ -70,14 +70,14 @@ export function Overdraft({ categories, today, onSave, onRemove, onAddTxn }: Pro
           <h2>Thấu chi</h2>
         </div>
         <p className="muted small">
-          Tiền rút thấu chi là khoản vay, không tính vào Thu. Lãi = dư nợ × lãi suất ÷ 365 × số ngày, tính từ ngày bắt đầu.
+          Tiền rút thấu chi là khoản vay, không tính vào Thu. Lãi = dư nợ × lãi suất ÷ 365 × số ngày, tính từ ngày hôm sau ngày rút.
         </p>
         <label className="field">
           Số tiền rút (₫)
           <input className="note" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </label>
         <label className="field">
-          Tính lãi từ ngày
+          Ngày rút
           <input type="date" className="note" value={start} onChange={(e) => setStart(e.target.value)} />
         </label>
         <label className="field">
@@ -99,7 +99,7 @@ export function Overdraft({ categories, today, onSave, onRemove, onAddTxn }: Pro
   const now = interestTo(od, today)
   const fut = interestTo(od, future)
   const futBal = balanceOn(od, future)
-  const sorted = [...od.events].sort((a, b) => a.date.localeCompare(b.date))
+  const sorted = [...od.events].sort((a, b) => eventDay(a).localeCompare(eventDay(b)))
 
   const addEvent = () => {
     const a = toAmount(evAmount)
@@ -107,7 +107,7 @@ export function Overdraft({ categories, today, onSave, onRemove, onAddTxn }: Pro
       setMsg('Nhập số tiền và ngày cho đúng.')
       return
     }
-    const ev: OdEvent = { date: evDate, amount: evKind === 'draw' ? a : -a }
+    const ev: OdEvent = evKind === 'draw' ? { date: nextDay(evDate), amount: a } : { date: evDate, amount: -a }
     save({ ...od, events: [...od.events, ev] })
     setEvAmount('')
     setMsg('')
@@ -153,7 +153,7 @@ export function Overdraft({ categories, today, onSave, onRemove, onAddTxn }: Pro
       <div className="mini">Các lần rút / trả</div>
       {sorted.map((e, i) => (
         <div className="plan-sub muted small" key={`${e.date}-${i}`}>
-          {dmy(e.date)} · {e.amount > 0 ? 'Rút' : 'Trả bớt'} {vnd(Math.abs(e.amount))} ₫{' '}
+          {dmy(eventDay(e))} · {e.amount > 0 ? 'Rút' : 'Trả bớt'} {vnd(Math.abs(e.amount))} ₫{' '}
           <button
             className="r-del"
             aria-label="Xóa dòng này"
@@ -179,7 +179,7 @@ export function Overdraft({ categories, today, onSave, onRemove, onAddTxn }: Pro
           <input className="note" inputMode="numeric" value={evAmount} onChange={(e) => setEvAmount(e.target.value)} />
         </label>
         <label className="field">
-          Ngày (rút: ngày bắt đầu tính lãi; trả: ngày thanh toán)
+          Ngày rút / ngày trả
           <input type="date" className="note" value={evDate} onChange={(e) => setEvDate(e.target.value)} />
         </label>
         <button className="save thu" onClick={addEvent}>

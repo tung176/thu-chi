@@ -101,3 +101,24 @@ export function withLoanEvent(existing: Category | undefined, ev: OdEvent): Cate
     overdraft: { rate: 13, events: [ev] },
   }
 }
+
+const prevDay = (s: string) => dayStr(dayNum(s) - 1)
+
+/** Ngày vay/trả thật để hiển thị: lần vay lưu ngày bắt đầu tính lãi (hôm sau), nên lùi lại một ngày. */
+export const eventDay = (e: OdEvent) => (e.amount > 0 ? prevDay(e.date) : e.date)
+
+/** Vay, trả và dư nợ gốc cuối tháng (YYYY-MM) của khoản thấu chi, theo ngày vay/trả thật. */
+export function monthLoanStats(od: Overdraft, month: string): { drawn: number; repaid: number; endBalance: number } {
+  let drawn = 0
+  let repaid = 0
+  let endBalance = 0
+  for (const e of od.events) {
+    const d = eventDay(e).slice(0, 7)
+    if (d === month) {
+      if (e.amount > 0) drawn += e.amount
+      else repaid += -e.amount
+    }
+    if (d <= month) endBalance += e.amount
+  }
+  return { drawn, repaid, endBalance }
+}

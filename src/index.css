@@ -403,3 +403,7 @@ html { touch-action: manipulation; }
 .gear { border: 0; background: var(--card); border-radius: 50%; width: 34px; height: 34px; font-size: 18px; color: var(--muted); line-height: 1; }
 .gear.on { color: var(--accent); }
 .gear.push { margin-left: auto; }
+
+/* Khoản vay thấu chi: màu riêng, không phải thu cũng không phải chi */
+.loan { color: var(--accent); }
+.di-amt.loan { color: var(--accent); }
