@@ -115,6 +115,12 @@ export function Entry({
       setQErr(res.error)
       return
     }
+    // Khoản vay (thấu chi...) không phải chi tiêu: không ghi vào Chi, để người dùng tạo ở Đầu tháng.
+    const plain = text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd')
+    if (/(vay|thaus*chi|thaus*tri)/.test(plain)) {
+      setQErr('Khoản vay thấu chi không tính vào Chi. Hãy thêm ở tab Đầu tháng, mục Thấu chi (app tính lãi theo ngày). Chưa ghi gì.')
+      return
+    }
     setQErr('')
 
     // 1) Xếp bằng điều đã nhớ, từ điển và tên mục (ngay trong máy, không cần mạng).
