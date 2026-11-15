@@ -94,3 +94,13 @@ export function parsePlanLines(text: string): { ok: { label: string; plan: Plan 
     })
   return { ok, errors }
 }
+
+/** Số tháng từ tháng a đến tháng b (YYYY-MM), b sau a thì dương. */
+const monthsBetween = (a: string, b: string) => (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + Number(b.slice(5)) - Number(a.slice(5))
+
+/** Còn nợ cuối tháng `month` của một khoản trả góp theo lịch kỳ (null nếu chưa bắt đầu). */
+export function planOwedAt(plan: Plan, month: string): number | null {
+  const n = monthsBetween(plan.firstMonth, month) + 1
+  if (n <= 0) return null
+  return Math.max(0, plan.periods - Math.min(n, plan.periods)) * plan.perMonth
+}

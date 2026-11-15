@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { Category, Txn } from './types'
 import {
   buildTree,
@@ -11,6 +11,7 @@ import {
 } from './lib/aggregate'
 import { monthLabel, TxnSheet, type Picked } from './TxnSheet'
 import { monthLoanStats } from './lib/overdraft'
+import { planOwedAt } from './lib/plan'
 
 interface Props {
   categories: Category[]
@@ -30,6 +31,7 @@ export function MonthTable({ categories, txns, months, currentMonth }: Props) {
   // 'all': hiện dòng có số ở bất kỳ tháng nào; 'last': chỉ dòng có số ở tháng mới nhất (cột bên phải).
   const [scope, setScope] = useState<'all' | 'last'>('last')
   const od = categories.find((c) => c.overdraft)?.overdraft
+  const plans = categories.filter((c) => c.plan)
 
   // Mở lên là cuộn tới tháng hiện tại (bên phải), vẫn cuộn ngược được về các tháng trước.
   useEffect(() => {
@@ -139,6 +141,22 @@ export function MonthTable({ categories, txns, months, currentMonth }: Props) {
                 )
               })}
             </tr>
+            {plans.length > 0 && (
+              <>
+                <tr className="row kind">
+                  <th className="name">NỢ TRẢ GÓP (còn nợ cuối tháng theo lịch kỳ; tiền trả mỗi kỳ đã nằm trong Chi)</th>
+                  {months.map((m) => (
+                    <td key={m} className="num" />
+                  ))}
+                </tr>
+                {plans.map((c) => (
+                  <tr className="row depth0" key={c.id}>
+                    <th className="name">{c.name}</th>
+                    {months.map((m) => cell(m, planOwedAt(c.plan!, m) ?? 0, undefined, 'loan'))}
+                  </tr>
+                ))}
+              </>
+            )}
             {od && (
               <>
                 <tr className="row kind">

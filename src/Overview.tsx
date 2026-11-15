@@ -12,6 +12,8 @@ import { pathOf } from './lib/entry'
 import { computeGap, GAPS, PIE_CHI, PIE_THU, type PieSlice } from './lib/overview'
 import { TxnSheet, type Picked } from './TxnSheet'
 import { Debts } from './Debts'
+import { balanceOn, interestTo } from './lib/overdraft'
+import { planStatuses } from './lib/plan'
 
 interface Props {
   categories: Category[]
@@ -94,6 +96,33 @@ export function Overview({
           Cả năm
         </button>
       </div>
+
+      {(() => {
+        const od = categories.find((c) => c.overdraft)?.overdraft
+        const plans = planStatuses(categories, txns, thisMonth)
+        const odOwed = od ? balanceOn(od, today) : 0
+        const odInterest = od ? interestTo(od, today).interest : 0
+        const planOwed = plans.reduce((s, p) => s + p.remaining * p.plan.perMonth, 0)
+        if (!od && plans.length === 0) return null
+        return (
+          <div className="card">
+            <div className="card-head">
+              <h2>Nợ ngắn hạn đang còn</h2>
+              <b className="chi">{vnd(odOwed + odInterest + planOwed)} ₫</b>
+            </div>
+            {od && (
+              <div className="plan-sub muted small">
+                Thấu chi: gốc {vnd(odOwed)} ₫ + lãi tạm tính {vnd(odInterest)} ₫
+              </div>
+            )}
+            {plans.map((p) => (
+              <div className="plan-sub muted small" key={p.category.id}>
+                {p.category.name}: còn {p.remaining} kỳ · {vnd(p.remaining * p.plan.perMonth)} ₫
+              </div>
+            ))}
+          </div>
+        )
+      })()}
 
       <div className="tiles">
         <div className="tile">
