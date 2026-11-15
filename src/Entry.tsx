@@ -16,6 +16,7 @@ import { makeCategory, newCategoryName, normalize } from './lib/match'
 import { aiReady, AiError, classifyWithAI, type AiResult } from './lib/ai'
 import { PHATSINH } from './data/categories'
 import { parseQuick } from './lib/quick'
+import { loanIntent, nextDay, withLoanEvent } from './lib/overdraft'
 
 interface Props {
   categories: Category[]
@@ -49,6 +50,8 @@ interface Undo {
   txnIds: string[]
   catIds: string[]
   lines: string[]
+  /** Khoản thấu chi vừa đổi: before = bản trước đó (null = vừa tạo mới). */
+  od?: { id: string; before: Category | null }
 }
 
 export function Entry({
@@ -90,6 +93,10 @@ export function Entry({
     if (!undo) return
     undo.txnIds.forEach(onDelete)
     undo.catIds.forEach(onRemoveCategory)
+    if (undo.od) {
+      if (undo.od.before) onAddCategory(undo.od.before)
+      else onRemoveCategory(undo.od.id)
+    }
     window.clearTimeout(undoTimer.current)
     setUndo(null)
   }
@@ -115,21 +122,47 @@ export function Entry({
       setQErr(res.error)
       return
     }
-    // Khoản vay (thấu chi...) không phải chi tiêu: không ghi vào Chi, để người dùng tạo ở Đầu tháng.
-    const plain = text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd')
-    if (/(vay|thaus*chi|thaus*tri)/.test(plain)) {
-      setQErr('Khoản vay thấu chi không tính vào Chi. Hãy thêm ở tab Đầu tháng, mục Thấu chi (app tính lãi theo ngày). Chưa ghi gì.')
+    // Khoản vay thấu chi không phải chi tiêu: cộng vào mục Thấu chi (tab Đầu tháng), không ghi vào Chi.
+    const intents = res.items.map((it) => loanIntent(it.note))
+    if (intents.includes('unknown')) {
+      setQErr('Khoản vay nào? App mới tính được thấu chi: hãy gõ có chữ "thấu chi", ví dụ "vay thấu chi 25tr". Chưa ghi gì.')
+      return
+    }
+    if (intents.includes('pay') && !categories.some((c) => c.overdraft)) {
+      setQErr('Chưa có khoản thấu chi nào để trả. Hãy gõ "vay thấu chi …" trước. Chưa ghi gì.')
+      return
+    }
+    const loanLines: string[] = []
+    const origOd = categories.find((c) => c.overdraft)
+    let od = origOd
+    res.items.forEach((it, i) => {
+      const k = intents[i]
+      if (k !== 'draw' && k !== 'pay') return
+      od = withLoanEvent(od, k === 'draw' ? { date: nextDay(it.date), amount: it.amount } : { date: it.date, amount: -it.amount })
+      loanLines.push(
+        k === 'draw'
+          ? `Vay thấu chi ${vnd(it.amount)} · tính lãi từ ${nextDay(it.date).slice(8)}/${nextDay(it.date).slice(5, 7)} (không tính vào Chi)`
+          : `Trả thấu chi ${vnd(it.amount)} (không tính vào Chi)`,
+      )
+    })
+    if (od && loanLines.length > 0) onAddCategory(od)
+    const rest = res.items.filter((_, i) => intents[i] === null)
+    if (rest.length === 0) {
+      showUndo({ txnIds: [], catIds: [], lines: loanLines, od: od ? { id: od.id, before: origOd ?? null } : undefined })
+      setQuick('')
+      setQErr('')
+      quickRef.current?.focus()
       return
     }
     setQErr('')
 
     // 1) Xếp bằng điều đã nhớ, từ điển và tên mục (ngay trong máy, không cần mạng).
-    const local = res.items.map((it) => classify(it.note, categories, txns))
+    const local = rest.map((it) => classify(it.note, categories, txns))
 
     // 2) Khoản nào chưa xếp được thì nhờ AI, nếu đã có key, đang bật và có mạng.
     const ai = new Map<string, AiResult | null>()
     let aiError = ''
-    const unknown = [...new Set(res.items.filter((_, i) => !local[i]).map((it) => it.note))]
+    const unknown = [...new Set(rest.filter((_, i) => !local[i]).map((it) => it.note))]
     if (unknown.length > 0 && aiReady()) {
       setBusy(true)
       await Promise.all(
@@ -149,10 +182,10 @@ export function Entry({
     let cats = categories
     const createdIds: string[] = []
     const addedIds: string[] = []
-    const lines: string[] = []
+    const lines: string[] = [...loanLines]
     const base = Date.now()
 
-    res.items.forEach((it, i) => {
+    rest.forEach((it, i) => {
       let cat = local[i]?.category
       let tag: Tag = ''
       if (!cat) {
@@ -190,7 +223,7 @@ export function Entry({
       lines.push(line(cat, it.amount, cats, tag, it.date))
     })
 
-    showUndo({ txnIds: addedIds, catIds: createdIds, lines })
+    showUndo({ txnIds: addedIds, catIds: createdIds, lines, od: od && loanLines.length > 0 ? { id: od.id, before: origOd ?? null } : undefined })
     setQuick('')
     if (aiError) setQErr(`AI chưa dùng được: ${aiError} Khoản này đã được ghi vào Chưa phân loại.`)
     quickRef.current?.focus()

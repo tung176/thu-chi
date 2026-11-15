@@ -63,3 +63,41 @@ export function interestTo(od: Overdraft, asOf: string): { interest: number; day
   }
   return { interest: Math.round(sum), days }
 }
+
+const plain = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd')
+
+/**
+ * Câu gõ nhanh có phải khoản vay thấu chi không?
+ * 'draw' = vay/rút thêm, 'pay' = trả, 'unknown' = có chữ "vay" nhưng không nói rõ thấu chi, null = không phải khoản vay.
+ */
+export function loanIntent(text: string): 'draw' | 'pay' | 'unknown' | null {
+  const t = plain(text)
+  const named = /\b(thau\s*chi|thau\s*tri|shopcash)\b/.test(t)
+  const borrow = /\bvay\b/.test(t)
+  if (!named && !borrow) return null
+  if (!/\b(thau\s*chi|thau\s*tri)\b/.test(t) && !(named && borrow)) return 'unknown'
+  return /\b(tra|hoan|thanh\s*toan|nop)\b/.test(t) ? 'pay' : 'draw'
+}
+
+/** Ngày liền sau (YYYY-MM-DD): tiền rút ngày 14 thì lãi tính từ ngày 15. */
+export const nextDay = (s: string) => dayStr(dayNum(s) + 1)
+
+/** Thêm một lần rút/trả vào khoản thấu chi; chưa có khoản nào thì tạo mới (lãi suất tạm 13%/năm, sửa ở Đầu tháng). */
+export function withLoanEvent(existing: Category | undefined, ev: OdEvent): Category {
+  if (existing?.overdraft) {
+    return { ...existing, overdraft: { ...existing.overdraft, events: [...existing.overdraft.events, ev] } }
+  }
+  return {
+    id: `u-${crypto.randomUUID().slice(0, 8)}`,
+    name: OD_LABEL,
+    kind: 'chi',
+    parentId: OD_PARENT,
+    archived: true,
+    overdraft: { rate: 13, events: [ev] },
+  }
+}

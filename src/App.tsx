@@ -15,6 +15,7 @@ import {
   syncReady,
   type SyncStatus,
 } from './lib/sync'
+import { loanIntent, nextDay, withLoanEvent } from './lib/overdraft'
 import type { Category, History, Txn } from './types'
 
 type Tab = 'entry' | 'days' | 'overview' | 'table' | 'month' | 'settings'
@@ -134,6 +135,34 @@ export default function App() {
     setTxns((cur) => (cur ?? []).filter((x) => x.id !== id))
     void putTxn({ ...t, deleted: true, updatedAt: Date.now() })
   }
+
+  // Một lần khi mở app: khoản vay thấu chi lỡ ghi nhầm vào Chi thì chuyển sang mục Thấu chi (không tính vào Chi).
+  const migrated = useRef(false)
+  useEffect(() => {
+    if (!txns || migrated.current) return
+    migrated.current = true
+    let od = categories.find((c) => c.overdraft)
+    let changed = false
+    const gone = new Set<string>()
+    const goneTxn = new Set<string>()
+    for (const t of txns) {
+      if (t.summary || t.deleted) continue
+      const cat = categories.find((c) => c.id === t.categoryId)
+      if (!cat || !cat.id.startsWith('u-') || cat.overdraft) continue
+      if (loanIntent(t.note) !== 'draw') continue
+      od = withLoanEvent(od, { date: nextDay(t.date), amount: t.amount })
+      changed = true
+      deleteTxn(t.id)
+      goneTxn.add(t.id)
+      gone.add(cat.id)
+    }
+    if (changed && od) addCategory(od)
+    // Mục tự tạo ra từ khoản đó (tên giống câu đã gõ) giờ rỗng thì bỏ đi.
+    for (const id of gone) {
+      if (!txns.some((x) => x.categoryId === id && !x.deleted && !goneTxn.has(x.id))) removeCategory(id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [txns])
 
   // ----- Sao lưu lên Google Sheets (nếu đã nhập địa chỉ Apps Script trong Cài đặt) -----
   const [sync, setSync] = useState<SyncStatus>(() => ({
