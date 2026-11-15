@@ -16,7 +16,9 @@ export const KEYWORDS: Record<string, string[]> = {
   'thu-duocbieu': ['được biếu', 'được mừng', 'được tặng', 'nhận quà', 'nhận lì xì', 'được cho'],
 
   // ----- CHI: ăn uống -----
-  'chi-angd': ['ăn gia đình', 'đi chợ', 'chợ', 'siêu thị', 'rau', 'thịt', 'cá', 'gạo', 'thực phẩm', 'trứng', 'bách hóa', 'đồ ăn nhà', 'mua đồ ăn'],
+  // Tiền ăn gia đình là tiền chi cho bố mẹ; ăn uống cá nhân xếp vào các mục bên dưới.
+  'chi-angd': ['ăn gia đình', 'tiền ăn bố mẹ', 'ăn bố mẹ', 'ăn cho bố mẹ', 'tiền ăn cho bố mẹ', 'chợ bố mẹ', 'đi chợ cho bố mẹ', 'ăn ba mẹ', 'tiền ăn ba mẹ'],
+  'chi-dicho': ['đi chợ', 'chợ', 'siêu thị', 'rau', 'thịt', 'cá', 'gạo', 'thực phẩm', 'trứng', 'bách hóa', 'đồ ăn nhà', 'mua đồ ăn'],
   'chi-ancon': ['ăn cho con', 'cho con ăn', 'ăn của con', 'cơm con', 'ăn con'],
   'chi-cafe': ['cafe', 'cà phê', 'coffee', 'trà sữa', 'trà đá', 'sinh tố', 'nước ép', 'highlands', 'phúc long', 'nước ngọt', 'trà', 'cacao'],
   'chi-anngoai': ['ăn sáng', 'ăn trưa', 'ăn tối', 'ăn ngoài', 'cháo', 'phở', 'bún', 'bánh mì', 'cơm', 'mì', 'lẩu', 'nướng', 'quán', 'nhà hàng', 'grabfood', 'shopeefood', 'giao đồ ăn', 'đồ ăn', 'xôi', 'ăn vặt', 'bia', 'nhậu', 'liên hoan', 'bánh', 'ăn'],

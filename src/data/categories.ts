@@ -42,8 +42,9 @@ export const CATEGORIES: Category[] = [
   // ===== CHI =====
   // 1. Ăn uống
   chi('g-chi-anuong', 'Ăn uống', null, { container: true }),
-  chi('chi-angd', 'Tiền ăn gia đình', 'g-chi-anuong'), // ✱
+  chi('chi-angd', 'Tiền ăn gia đình (cho bố mẹ)', 'g-chi-anuong'), // ✱
   chi('chi-ancon', 'Tiền ăn cho con', 'g-chi-anuong'), // ✱
+  chi('chi-dicho', 'Đi chợ, siêu thị (cá nhân)', 'g-chi-anuong'),
   chi('chi-cafe', 'Cà phê, trà sữa', 'g-chi-anuong'),
   chi('chi-anngoai', 'Ăn ngoài, giao đồ ăn', 'g-chi-anuong'),
 
