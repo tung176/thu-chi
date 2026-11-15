@@ -11,6 +11,8 @@ export interface Category {
   /** Nhóm chỉ để chứa mục con (ví dụ "Phát sinh"), không chọn trực tiếp khi nhập. */
   container?: boolean
   /** Kế hoạch trả góp của mục này (nếu mục là một khoản trả góp). */
+  /** Khoản thấu chi (lãi suất năm %, các lần rút/trả). */
+  overdraft?: { rate: number; events: { date: string; amount: number }[] }
   plan?: { perMonth: number; periods: number; firstMonth: string; paidBefore: number }
 }
 

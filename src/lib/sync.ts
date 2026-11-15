@@ -5,6 +5,7 @@ import { CATEGORIES } from '../data/categories'
 import { importBackup, type ImportResult } from './backup'
 import { loadCategories, loadTxns } from './db'
 import { parsePlanName, planName } from './plan'
+import { overdraftName, parseOverdraftName } from './overdraft'
 
 export class SyncError extends Error {}
 
@@ -181,7 +182,7 @@ export async function pushNow(force = false): Promise<{ pushed: number }> {
   // Danh mục tự tạo, kể cả kế hoạch trả góp (ghi vào tên dạng "Tủ lạnh [1500000|12|2026-01|3]").
   const custom = cats
     .filter((c) => c.id.startsWith('u-'))
-    .map((c) => [c.id, c.plan ? planName(c.name, c.plan) : c.name, c.kind, c.parentId ?? ''])
+    .map((c) => [c.id, c.plan ? planName(c.name, c.plan) : c.overdraft ? overdraftName(c.name, c.overdraft) : c.name, c.kind, c.parentId ?? ''])
   const sig = JSON.stringify(custom)
   const catsChanged = custom.length > 0 && sig !== st.catSig
 
@@ -214,7 +215,16 @@ export async function pullNow(): Promise<ImportResult> {
       exportedAt: new Date().toISOString(),
       categories: data.categories.map((c) => {
         const p = parsePlanName(c.name)
-        return { id: c.id, name: p ? p.label : c.name, kind: c.kind, parentId: c.parentId || null, plan: p?.plan }
+        const o = parseOverdraftName(c.name)
+        return {
+          id: c.id,
+          name: p ? p.label : o ? o.label : c.name,
+          kind: c.kind,
+          parentId: c.parentId || null,
+          plan: p?.plan,
+          overdraft: o?.od,
+          archived: o ? true : undefined,
+        }
       }),
       txns: data.txns,
     }),

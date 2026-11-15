@@ -114,7 +114,7 @@ export default function App() {
   }
 
   const addCategory = (c: Category) => {
-    setCategories((cur) => [...cur, c])
+    setCategories((cur) => (cur.some((x) => x.id === c.id) ? cur.map((x) => (x.id === c.id ? c : x)) : [...cur, c]))
     void putMany('categories', [c])
   }
 

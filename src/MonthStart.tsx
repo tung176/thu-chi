@@ -3,6 +3,7 @@ import type { Category, Txn } from './types'
 import { parse } from './lib/amount'
 import { sumByLeafMonth, vnd } from './lib/aggregate'
 import { labelOf, timeStr } from './lib/entry'
+import { Overdraft } from './Overdraft'
 import { addMonths, PLAN_PARENT, parsePlanLines, planStatuses } from './lib/plan'
 
 interface Props {
@@ -272,6 +273,8 @@ export function MonthStart({ categories, txns, thisMonth, today, onAdd, onAddCat
           </button>
         </details>
       </section>
+
+      <Overdraft categories={categories} today={today} onSave={onAddCategory} onRemove={onRemoveCategory} onAddTxn={onAdd} />
 
       <section className="card">
         <div className="card-head">

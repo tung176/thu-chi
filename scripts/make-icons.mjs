@@ -23,20 +23,33 @@ const chunk = (type, data) => {
 
 const BG = [10, 132, 255]
 const FG = [255, 255, 255]
-// Ba cột tăng dần, như biểu đồ thu chi.
-const BARS = [
-  { x0: 0.22, x1: 0.36, y0: 0.55, y1: 0.74 },
-  { x0: 0.43, x1: 0.57, y0: 0.4, y1: 0.74 },
-  { x0: 0.64, x1: 0.78, y0: 0.26, y1: 0.74 },
-]
-const R = 0.035
-
-function inBar(u, v, b) {
-  // Hình chữ nhật bo góc
-  const cx = Math.min(Math.max(u, b.x0 + R), b.x1 - R)
-  const cy = Math.min(Math.max(v, b.y0 + R), b.y1 - R)
-  return (u - cx) ** 2 + (v - cy) ** 2 <= R * R
+// Túi tiền màu trắng trên nền xanh, chữ $ xanh nằm trên thân túi.
+const ring = (u, v, cx, cy, r, w) => Math.abs(Math.hypot(u - cx, v - cy) - r) <= w / 2
+const rrect = (u, v, x0, y0, x1, y1) => u >= x0 && u <= x1 && v >= y0 && v <= y1
+function trap(u, v, y0, y1, h0, h1) {
+  if (v < y0 || v > y1) return false
+  const h = h0 + ((h1 - h0) * (v - y0)) / (y1 - y0)
+  return Math.abs(u - 0.5) <= h
 }
+function inBag(u, v) {
+  if (Math.hypot(u - 0.5, v - 0.66) <= 0.26) return true // thân túi
+  if (trap(u, v, 0.4, 0.55, 0.085, 0.2)) return true // cổ túi
+  if (trap(u, v, 0.25, 0.37, 0.15, 0.1)) return true // miệng xòe
+  if (rrect(u, v, 0.38, 0.35, 0.62, 0.42)) return true
+  return false
+}
+function inTie(u, v) {
+  return rrect(u, v, 0.4, 0.405, 0.6, 0.44) // dây buộc (khe xanh)
+}
+function inDollar(u, v) {
+  const cx = 0.5
+  const w = 0.04
+  if (rrect(u, v, cx - 0.013, 0.535, cx + 0.013, 0.795)) return true
+  if (ring(u, v, cx, 0.605, 0.07, w) && !(u > cx && v > 0.605)) return true
+  if (ring(u, v, cx, 0.725, 0.07, w) && !(u < cx && v < 0.725)) return true
+  return false
+}
+const inFg = (u, v) => inBag(u, v) && !inTie(u, v) && !inDollar(u, v)
 
 function png(size) {
   const raw = Buffer.alloc((size * 3 + 1) * size)
@@ -49,7 +62,7 @@ function png(size) {
         for (let sx = 0; sx < SS; sx++) {
           const u = (x + (sx + 0.5) / SS) / size
           const v = (y + (sy + 0.5) / SS) / size
-          if (BARS.some((b) => inBar(u, v, b))) hit++
+          if (inFg(u, v)) hit++
         }
       const t = hit / (SS * SS)
       const o = y * (size * 3 + 1) + 1 + x * 3
