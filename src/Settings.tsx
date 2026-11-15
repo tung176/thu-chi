@@ -53,6 +53,18 @@ export function Settings({ onImported, sync, onSyncNow, onSyncConfigChanged }: P
     }
   }
 
+  const [pasted, setPasted] = useState('')
+  const doPaste = async () => {
+    try {
+      const r = await importBackup(pasted)
+      onImported()
+      setPasted('')
+      setBackupMsg({ ok: true, text: `Đã nhập: thêm ${r.added} khoản, cập nhật ${r.updated}${r.skipped ? `, bỏ qua ${r.skipped} dòng lỗi` : ''}.` })
+    } catch (e) {
+      setBackupMsg({ ok: false, text: (e as Error).message })
+    }
+  }
+
   const [key, setKeyState] = useState(getKey())
   const [draft, setDraft] = useState('')
   const [enabled, setEnabledState] = useState(isEnabled())
@@ -209,6 +221,22 @@ export function Settings({ onImported, sync, onSyncNow, onSyncConfigChanged }: P
           hidden
           onChange={(e) => void doImport(e.target.files?.[0])}
         />
+        <details className="adv">
+          <summary>Hoặc dán nội dung sao lưu</summary>
+          <textarea
+            className="note ms-text"
+            rows={4}
+            value={pasted}
+            onChange={(e) => setPasted(e.target.value)}
+            placeholder='{"app":"thu-chi", ...}'
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+          <button className="save thu" disabled={!pasted.trim()} onClick={() => void doPaste()}>
+            Nhập nội dung đã dán
+          </button>
+        </details>
         {backupMsg && <div className={backupMsg.ok ? 'msg ok' : 'msg bad'}>{backupMsg.text}</div>}
       </section>
 
