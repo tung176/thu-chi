@@ -407,3 +407,7 @@ html { touch-action: manipulation; }
 /* Khoản vay thấu chi: màu riêng, không phải thu cũng không phải chi */
 .loan { color: var(--accent); }
 .di-amt.loan { color: var(--accent); }
+
+/* Ô chọn ngày/nhập trong thẻ không tràn ra ngoài khung trên iPhone */
+.card .field { display: block; }
+.card .field .note, .card input[type='date'] { width: 100%; max-width: 100%; box-sizing: border-box; -webkit-appearance: none; appearance: none; text-align: left; }
