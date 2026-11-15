@@ -85,7 +85,7 @@ export default function App() {
       if (!alive) return
       if (c.length > 0) setCategories(mergeCategories(c))
       setTxns(t.filter((x) => !x.deleted))
-    })()
+    })().catch((e) => window.__fatal?.('Không đọc được dữ liệu trong máy.', e))
     return () => {
       alive = false
     }

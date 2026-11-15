@@ -15,8 +15,19 @@ function open(): Promise<IDBDatabase> {
         db.createObjectStore('txns', { keyPath: 'id' })
         db.createObjectStore('categories', { keyPath: 'id' })
       }
-      req.onsuccess = () => resolve(req.result)
-      req.onerror = () => reject(req.error)
+      const timer = setTimeout(() => {
+        dbPromise = null
+        reject(new Error('Không mở được bộ nhớ trong máy (IndexedDB) sau 8 giây.'))
+      }, 8000)
+      req.onsuccess = () => {
+        clearTimeout(timer)
+        resolve(req.result)
+      }
+      req.onerror = () => {
+        clearTimeout(timer)
+        dbPromise = null
+        reject(req.error)
+      }
     })
   }
   return dbPromise

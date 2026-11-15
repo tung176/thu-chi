@@ -2,7 +2,7 @@
 // - Trang chính: ưu tiên mạng (để nhận bản mới), mất mạng thì dùng bản đã lưu.
 // - Tệp tĩnh (js, css, ảnh): ưu tiên bản đã lưu cho nhanh.
 // Dữ liệu thu chi nằm trong IndexedDB, không đi qua service worker này.
-const CACHE = 'thu-chi-v3'
+const CACHE = 'thu-chi-v4'
 
 self.addEventListener('install', () => self.skipWaiting())
 
@@ -35,8 +35,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone()
-          caches.open(CACHE).then((c) => c.put(req, copy))
+          // Chỉ lưu trang tải bình thường; không lưu trang chuyển hướng hay lỗi (iOS không nhận trang chuyển hướng từ service worker).
+          if (res.ok && !res.redirected) {
+            const copy = res.clone()
+            caches.open(CACHE).then((c) => c.put(req, copy))
+          }
           return res
         })
         .catch(

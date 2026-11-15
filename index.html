@@ -12,9 +12,67 @@
     <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
     <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
     <title>Thu Chi</title>
+    <style>
+      html, body { height: 100%; margin: 0; background: #f2f2f7; color: #111; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+      @media (prefers-color-scheme: dark) { html, body { background: #000; color: #f2f2f7; } }
+      #boot { padding: 48px 20px; text-align: center; font-size: 17px; }
+      #fatal { position: fixed; inset: 0; z-index: 99999; overflow: auto; padding: 24px 18px; background: #f2f2f7; color: #111; font-size: 15px; line-height: 1.45; }
+      @media (prefers-color-scheme: dark) { #fatal { background: #1c1c1e; color: #f2f2f7; } }
+      #fatal h2 { margin: 0 0 8px; font-size: 20px; }
+      #fatal pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; background: rgba(128,128,128,.18); padding: 10px; border-radius: 8px; }
+      #fatal button { font-size: 16px; padding: 12px 16px; margin: 6px 8px 6px 0; border-radius: 10px; border: 0; background: #0a84ff; color: #fff; }
+      #fatal button.alt { background: rgba(128,128,128,.3); color: inherit; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="boot">Đang khởi động…</div></div>
+    <script>
+      // Hộp báo lỗi toàn cục: màn hình trắng không bao giờ im lặng.
+      (function () {
+        var shown = false
+        function info() {
+          var sw = 'serviceWorker' in navigator ? (navigator.serviceWorker.controller ? 'có' : 'chưa') : 'không hỗ trợ'
+          return ['Máy: ' + navigator.userAgent, 'Mở từ Màn hình chính: ' + (navigator.standalone ? 'có' : 'không'), 'Service worker điều khiển trang: ' + sw, 'Địa chỉ: ' + location.href, 'Có mạng: ' + (navigator.onLine ? 'có' : 'không')].join('\n')
+        }
+        function resetAndReload() {
+          var p = Promise.resolve()
+          try {
+            if (navigator.serviceWorker) p = navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister() })) })
+            p = p.then(function () { return window.caches ? caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k) })) }) : null })
+          } catch (e) {}
+          var go = function () { location.replace(location.pathname + '?v=' + Date.now()) }
+          p.then(go, go)
+        }
+        window.__fatal = function (title, err) {
+          if (shown) return
+          shown = true
+          var box = document.createElement('div')
+          box.id = 'fatal'
+          var add = function (tag, text, cls) { var el = document.createElement(tag); el.textContent = text; if (cls) el.className = cls; box.appendChild(el); return el }
+          add('h2', 'Thu Chi gặp sự cố')
+          add('p', title + ' Dữ liệu trong máy của bạn không bị xóa. Bạn có thể chụp màn hình này gửi cho người hỗ trợ.')
+          var detail = err && (err.stack || err.message || String(err))
+          add('pre', (detail ? String(detail).slice(0, 700) + '\n\n' : '') + info())
+          add('button', 'Tải lại').onclick = function () { location.reload() }
+          add('button', 'Xóa bộ nhớ đệm của app rồi tải lại', 'alt').onclick = resetAndReload
+          add('button', 'Đóng', 'alt').onclick = function () { box.remove(); shown = false }
+          document.body.appendChild(box)
+        }
+        window.addEventListener('error', function (e) {
+          var t = e.target
+          if (t && t !== window && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) return window.__fatal('Không tải được một tệp của app (' + (t.src || t.href) + ').', null)
+          if (/ResizeObserver/.test(e.message || '')) return
+          window.__fatal('Có lỗi khi chạy app: ' + (e.message || ''), e.error)
+        }, true)
+        window.addEventListener('unhandledrejection', function (e) {
+          window.__fatal('Có lỗi không xử lý được.', e.reason)
+        })
+        // Quá 8 giây mà app vẫn chưa hiện: báo ngay thay vì để trắng.
+        setTimeout(function () {
+          if (document.getElementById('boot')) window.__fatal('App chưa khởi động được sau 8 giây.', null)
+        }, 8000)
+      })()
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
