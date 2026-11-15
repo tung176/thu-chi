@@ -16,6 +16,7 @@ import {
 } from './lib/sync'
 import { loanIntent, nextDay, withLoanEvent } from './lib/overdraft'
 import { addMonths } from './lib/plan'
+import { withDerived } from './lib/derived'
 import type { Category, History, Txn } from './types'
 
 type Tab = 'entry' | 'days' | 'overview' | 'table' | 'settings'
@@ -279,6 +280,9 @@ export default function App() {
     }
   }, [txns])
 
+  // Số liệu để xem: thêm vay/trả thấu chi và kỳ trả góp đến hạn (không lưu, không đồng bộ).
+  const viewTxns = useMemo(() => withDerived(categories, txns ?? [], thisMonth), [categories, txns])
+
   if (txns === null) return <div className="app"><p className="hint">Đang tải…</p></div>
 
   if (txns.length === 0 && !started) {
@@ -346,12 +350,13 @@ export default function App() {
           />
         )}
         {tab === 'days' && (
-          <DayView categories={categories} txns={txns} months={months} thisMonth={thisMonth} today={todayStr} />
+          <DayView categories={categories} txns={viewTxns} months={months} thisMonth={thisMonth} today={todayStr} />
         )}
         {tab === 'overview' && (
           <Overview
             categories={categories}
-            txns={txns}
+            txns={viewTxns}
+            realTxns={txns}
             months={months}
             initialMonth={latest}
             thisMonth={thisMonth}
@@ -364,7 +369,7 @@ export default function App() {
         {tab === 'table' && (
           <>
             <p className="hint">Vuốt ngang để xem các tháng. Chạm tên nhóm để mở/gập, chạm một ô số để xem giao dịch.</p>
-            <MonthTable categories={categories} txns={txns} months={months} currentMonth={thisMonth} />
+            <MonthTable categories={categories} txns={viewTxns} months={months} currentMonth={thisMonth} />
           </>
         )}
         {tab === 'settings' && (

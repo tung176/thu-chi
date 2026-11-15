@@ -160,14 +160,12 @@ export function MonthTable({ categories, txns, months, currentMonth }: Props) {
             {od && (
               <>
                 <tr className="row kind">
-                  <th className="name">THẤU CHI (khoản vay, không cộng Thu/Chi)</th>
+                  <th className="name">THẤU CHI (vay đã tính vào Thu, trả gốc vào Chi)</th>
                   {months.map((m) => (
                     <td key={m} className="num" />
                   ))}
                 </tr>
                 {([
-                  ['Vay (+)', 'drawn'],
-                  ['Trả gốc (−)', 'repaid'],
                   ['Dư nợ cuối tháng', 'endBalance'],
                 ] as const).map(([label, key]) => (
                   <tr className="row depth0" key={key}>

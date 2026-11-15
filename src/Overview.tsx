@@ -18,6 +18,8 @@ import { planStatuses } from './lib/plan'
 interface Props {
   categories: Category[]
   txns: Txn[]
+  /** Giao dịch thật đã lưu (không gồm số suy ra), dùng cho phần nợ. */
+  realTxns: Txn[]
   /** Mọi tháng có thể xem, từ cũ đến mới (gồm cả tháng hiện tại dù chưa có số). */
   months: string[]
   /** Tháng mở lên đầu tiên (tháng gần nhất có dữ liệu). */
@@ -34,6 +36,7 @@ const monthTitle = (m: string) => `Tháng ${Number(m.slice(5))}/${m.slice(0, 4)}
 export function Overview({
   categories,
   txns,
+  realTxns,
   months,
   initialMonth,
   thisMonth,
@@ -99,7 +102,7 @@ export function Overview({
 
       {(() => {
         const od = categories.find((c) => c.overdraft)?.overdraft
-        const plans = planStatuses(categories, txns, thisMonth)
+        const plans = planStatuses(categories, realTxns, thisMonth)
         const odOwed = od ? balanceOn(od, today) : 0
         const odInterest = od ? interestTo(od, today).interest : 0
         const planOwed = plans.reduce((s, p) => s + p.remaining * p.plan.perMonth, 0)
@@ -189,7 +192,7 @@ export function Overview({
 
       <Debts
         categories={categories}
-        txns={txns}
+        txns={realTxns}
         thisMonth={thisMonth}
         today={today}
         onAdd={onAdd}

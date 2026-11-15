@@ -34,6 +34,9 @@ export const CATEGORIES: Category[] = [
   thu('thu-dv-t3', 'Tầng 3', 'thu-dv'),
   thu('thu-dv-t4', 'Tầng 4', 'thu-dv'),
 
+  // Hiển thị suy ra từ khoản thấu chi (không chọn khi nhập, không lưu thành giao dịch).
+  thu('thu-vay-thauchi', 'Vay thấu chi', null, { archived: true }),
+
   thu('thu-phatsinh', 'Thu khác', null, { container: true }),
   thu('thu-lai', 'Lãi, hoàn tiền', 'thu-phatsinh'),
   thu('thu-bando', 'Bán đồ cũ', 'thu-phatsinh'),
@@ -44,6 +47,7 @@ export const CATEGORIES: Category[] = [
   chi('g-chi-anuong', 'Ăn uống', null, { container: true }),
   chi('chi-angd', 'Tiền ăn gia đình (cho bố mẹ)', 'g-chi-anuong'), // ✱
   chi('chi-ancon', 'Tiền ăn cho con', 'g-chi-anuong'), // ✱
+  chi('chi-tra-thauchi', 'Trả gốc thấu chi', null, { archived: true }),
   chi('chi-dicho', 'Đi chợ, siêu thị (cá nhân)', 'g-chi-anuong'),
   chi('chi-cafe', 'Cà phê, trà sữa', 'g-chi-anuong'),
   chi('chi-anngoai', 'Ăn ngoài, giao đồ ăn', 'g-chi-anuong'),

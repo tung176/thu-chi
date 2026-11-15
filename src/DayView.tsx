@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import type { Category, Txn } from './types'
 import { vnd } from './lib/aggregate'
 import { pathOf } from './lib/entry'
-import { eventDay } from './lib/overdraft'
 
 interface Props {
   categories: Category[]
@@ -29,8 +28,6 @@ interface Day {
   chi: number
   thu: number
   items: Txn[]
-  /** Vay (+) hoặc trả (−) thấu chi trong ngày: hiện riêng, không cộng vào Thu/Chi. */
-  loans: number[]
 }
 
 /** Mỗi ngày thu chi bao nhiêu. Chỉ tính khoản ghi theo từng ngày; số tổng hợp tháng (từ file Sheet cũ) không có ngày thật nên không đưa vào đây. */
@@ -53,7 +50,7 @@ export function DayView({ categories, txns, months, thisMonth, today }: Props) {
     let thu = 0
     for (const t of real) {
       if (!t.date.startsWith(month)) continue
-      const d = map.get(t.date) ?? { chi: 0, thu: 0, items: [], loans: [] }
+      const d = map.get(t.date) ?? { chi: 0, thu: 0, items: [] }
       if (kindOf(t.categoryId) === 'thu') {
         d.thu += t.amount
         thu += t.amount
@@ -63,15 +60,6 @@ export function DayView({ categories, txns, months, thisMonth, today }: Props) {
       }
       d.items.push(t)
       map.set(t.date, d)
-    }
-    for (const c of categories) {
-      for (const e of c.overdraft?.events ?? []) {
-        const day = eventDay(e)
-        if (!day.startsWith(month)) continue
-        const dd = map.get(day) ?? { chi: 0, thu: 0, items: [], loans: [] }
-        dd.loans.push(e.amount)
-        map.set(day, dd)
-      }
     }
     const list = [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]))
     for (const [, d] of list) d.items.sort((a, b) => b.time.localeCompare(a.time))
@@ -137,17 +125,11 @@ export function DayView({ categories, txns, months, thisMonth, today }: Props) {
                     {weekday}, {short}
                     {date === today && <span className="day-today">Hôm nay</span>}
                   </div>
-                  <div className="day-sub muted">{d.items.length + d.loans.length} khoản</div>
+                  <div className="day-sub muted">{d.items.length} khoản</div>
                 </div>
                 <div className="day-amt">
                   {d.chi > 0 && <div className="chi">−{vnd(d.chi)}</div>}
                   {d.thu > 0 && <div className="thu">+{vnd(d.thu)}</div>}
-                  {d.loans.length > 0 && (
-                    <div className="loan">
-                      {d.loans.reduce((s, x) => s + x, 0) >= 0 ? '+' : '−'}
-                      {vnd(Math.abs(d.loans.reduce((s, x) => s + x, 0)))} thấu chi
-                    </div>
-                  )}
                 </div>
                 <span className="caret">{isOpen ? '▾' : '▸'}</span>
               </button>
@@ -158,18 +140,6 @@ export function DayView({ categories, txns, months, thisMonth, today }: Props) {
               )}
               {isOpen && (
                 <ul className="day-items">
-                  {d.loans.map((x, i) => (
-                    <li key={`loan-${i}`}>
-                      <div className="di-main">
-                        <div>{x > 0 ? 'Vay thấu chi' : 'Trả gốc thấu chi'}</div>
-                        <div className="muted di-sub">Khoản vay, không tính vào Thu/Chi</div>
-                      </div>
-                      <div className="di-amt loan">
-                        {x > 0 ? '+' : '−'}
-                        {vnd(Math.abs(x))}
-                      </div>
-                    </li>
-                  ))}
                   {d.items.map((t) => {
                     const cat = categories.find((c) => c.id === t.categoryId)
                     const isThu = cat?.kind === 'thu'
