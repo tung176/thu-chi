@@ -1,9 +1,8 @@
 // Số liệu suy ra để hiển thị (không lưu): các lần vay/trả thấu chi và các kỳ trả góp đã đến hạn.
-// - Vay thấu chi tính là Thu (tiền mặt vào tay), trả gốc thấu chi tính là Chi (tiền mặt ra), cùng ngày thật.
+// - Thấu chi là khoản nợ, không tính vào Thu hay Chi; chỉ hiện dư nợ (số âm) ở Bảng tháng và Tổng quan.
 // - Kỳ trả góp đã đến hạn mà chưa ghi thì hiện như một khoản chi của tháng đó; số tổng hợp "Tiền trả góp / bảo dưỡng"
 //   của tháng từ file cũ đã chứa các kỳ này nên được trừ bớt để không tính trùng.
 import type { Category, Txn } from '../types'
-import { eventDay } from './overdraft'
 import { addMonths, PLAN_PARENT } from './plan'
 
 export const VAY_ID = 'thu-vay-thauchi'
@@ -11,19 +10,6 @@ export const TRA_ID = 'chi-tra-thauchi'
 
 export function withDerived(categories: Category[], txns: Txn[], thisMonth: string): Txn[] {
   const extra: Txn[] = []
-
-  for (const c of categories) {
-    c.overdraft?.events.forEach((e, i) => {
-      extra.push({
-        id: `od-${c.id}-${i}`,
-        date: eventDay(e),
-        time: '00:00',
-        amount: Math.abs(e.amount),
-        categoryId: e.amount > 0 ? VAY_ID : TRA_ID,
-        note: e.amount > 0 ? 'Vay thấu chi' : 'Trả gốc thấu chi',
-      })
-    })
-  }
 
   // Số tiền kỳ trả góp theo tháng (đã ghi hoặc đến hạn chưa ghi), để trừ khỏi số tổng hợp cùng tháng.
   const planByMonth = new Map<string, number>()

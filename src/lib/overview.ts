@@ -34,13 +34,12 @@ export const PIE_THU: PieSlice[] = [
   { key: 'kd', label: 'Tiền kinh doanh', ids: ['thu-kinhdoanh'], color: C.aqua },
   { key: 'dv', label: 'Phí dịch vụ của khách', ids: ['thu-dv'], color: C.yellow },
   { key: 'thukhac', label: 'Thu khác (phát sinh)', ids: ['thu-phatsinh'], color: C.gray },
-  { key: 'vay', label: 'Vay thấu chi', ids: ['thu-vay-thauchi'], color: C.magenta },
 ]
 
 export const PIE_CHI: PieSlice[] = [
   { key: 'gopnha', label: 'Trả góp nhà', ids: ['chi-gopnha'], color: C.blue },
-  { key: 'angd', label: 'Ăn gia đình', ids: ['chi-angd'], color: C.orange },
-  { key: 'ancon', label: 'Ăn cho con', ids: ['chi-ancon'], color: C.aqua },
+  { key: 'angd', label: 'Chi tiêu bố mẹ', ids: ['chi-angd'], color: C.orange },
+  { key: 'ancon', label: 'Chi tiêu vợ con', ids: ['chi-ancon'], color: C.aqua },
   { key: 'anngoai', label: 'Ăn ngoài, cà phê', ids: ['chi-anngoai', 'chi-cafe'], color: C.brown },
   { key: 'dichuyen', label: 'Di chuyển', ids: ['g-chi-dichuyen'], color: C.slate },
   { key: 'dien', label: 'Điện', ids: ['chi-dien'], color: C.yellow },
@@ -54,7 +53,6 @@ export const PIE_CHI: PieSlice[] = [
     color: C.red,
   },
   { key: 'baohiem', label: 'Bảo hiểm', ids: ['chi-baohiem'], color: C.teal },
-  { key: 'tratc', label: 'Trả gốc thấu chi', ids: ['chi-tra-thauchi'], color: C.brown },
   // Mọi thứ còn lại (mua sắm, sức khỏe, con cái...). Chạm vào để xem tách ra.
   { key: 'khac', label: 'Khác', ids: [], color: C.gray, rest: true },
 ]

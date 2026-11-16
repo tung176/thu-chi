@@ -160,7 +160,7 @@ export function MonthTable({ categories, txns, months, currentMonth }: Props) {
             {od && (
               <>
                 <tr className="row kind">
-                  <th className="name">THẤU CHI (vay đã tính vào Thu, trả gốc vào Chi)</th>
+                  <th className="name">THẤU CHI (khoản nợ, số âm; không tính vào Thu hay Chi)</th>
                   {months.map((m) => (
                     <td key={m} className="num" />
                   ))}
@@ -170,7 +170,7 @@ export function MonthTable({ categories, txns, months, currentMonth }: Props) {
                 ] as const).map(([label, key]) => (
                   <tr className="row depth0" key={key}>
                     <th className="name">{label}</th>
-                    {months.map((m) => cell(m, monthLoanStats(od, m)[key], undefined, 'loan'))}
+                    {months.map((m) => cell(m, -monthLoanStats(od, m)[key], undefined, 'loan'))}
                   </tr>
                 ))}
               </>

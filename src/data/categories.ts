@@ -43,10 +43,12 @@ export const CATEGORIES: Category[] = [
   thu('thu-duocbieu', 'Được biếu, được mừng', 'thu-phatsinh'),
 
   // ===== CHI =====
-  // 1. Ăn uống
+  // 0. Chi tiêu cho bố mẹ và cho vợ con: hai mục lớn riêng (khớp BangThang trên Google Sheet)
+  chi('chi-angd', 'Chi tiêu bố mẹ', null), // ✱ tiền ăn gia đình
+  chi('chi-ancon', 'Chi tiêu vợ con', null), // ✱ tiền ăn cho con
+
+  // 1. Ăn uống (cá nhân)
   chi('g-chi-anuong', 'Ăn uống', null, { container: true }),
-  chi('chi-angd', 'Tiền ăn gia đình (cho bố mẹ)', 'g-chi-anuong'), // ✱
-  chi('chi-ancon', 'Tiền ăn cho con', 'g-chi-anuong'), // ✱
   chi('chi-tra-thauchi', 'Trả gốc thấu chi', null, { archived: true }),
   chi('chi-dicho', 'Đi chợ, siêu thị (cá nhân)', 'g-chi-anuong'),
   chi('chi-cafe', 'Cà phê, trà sữa', 'g-chi-anuong'),
