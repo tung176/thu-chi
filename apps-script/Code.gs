@@ -354,8 +354,13 @@ function buildMonthly_(ss, catalog) {
     }
     d.push(row);
   }
-  sh.getRange(2, 1, 3, cols).setFormulas(f);
-  if (d.length) sh.getRange(first5, 1, d.length, cols).setFormulas(d);
+  // setFormulas coi mọi chuỗi là công thức (chữ thường thành #NAME?), nên nhãn ghi bằng setValues, số liệu mới là công thức.
+  sh.getRange(2, 1, 3, 3).setValues(f.map(function (x) { return x.slice(0, 3); }));
+  sh.getRange(2, 4, 3, list.length).setFormulas(f.map(function (x) { return x.slice(3); }));
+  if (d.length) {
+    sh.getRange(first5, 1, d.length, 3).setValues(d.map(function (x) { return x.slice(0, 3); }));
+    sh.getRange(first5, 4, d.length, list.length).setFormulas(d.map(function (x) { return x.slice(3); }));
+  }
   sh.getRange(2, 4, 3 + d.length, list.length).setNumberFormat('#,##0;-#,##0;');
   sh.getRange(2, 1, 3, cols).setFontWeight('bold');
   sh.setFrozenRows(1);
