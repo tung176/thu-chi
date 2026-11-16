@@ -125,7 +125,7 @@ function txSheet_(ss) {
 function sortTx_(sh) {
   var last = sh.getLastRow();
   if (last < 3) return;
-  sh.getRange(2, 1, last - 1, TX_N).sort([{ column: 1, ascending: true }, { column: 2, ascending: true }]);
+  sh.getRange(2, 1, last - 1, TX_N).sort([{ column: 1, ascending: false }, { column: 2, ascending: false }]);
 }
 
 // Bản cũ của trang GiaoDich có cột C là "Nội dung" gộp. Đổi sang bố cục mới một lần, có giữ bản sao lưu trước khi đổi.
@@ -310,6 +310,7 @@ function buildMonthly_(ss, catalog) {
   var lastM = months[months.length - 1] > thisMonth ? months[months.length - 1] : thisMonth;
   var list = [];
   for (var m = months[0]; m <= lastM; m = monthAdd_(m, 1)) list.push(m);
+  list.reverse(); // tháng mới nhất ở bên trái
 
   // Thứ tự dòng: Thu trước Chi, trong mỗi loại theo thứ tự danh mục của app (mục lạ xếp cuối).
   var pos = {};
@@ -377,7 +378,7 @@ function buildMonthly_(ss, catalog) {
     chiRow.push(tC);
     conRow.push(tT - tC);
   }
-  sh.getRange(1, cols + 2).setValue('Bản mã: số tính sẵn v5 (có màu, tách bố mẹ / vợ con), cập nhật ' + Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'dd/MM HH:mm'));
+  sh.getRange(1, cols + 2).setValue('Bản mã: số tính sẵn v6 (tháng mới ở bên trái), cập nhật ' + Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'dd/MM HH:mm'));
   sh.getRange(2, 1, 3, cols).setValues([thuRow, chiRow, conRow]);
   if (d.length) sh.getRange(first5, 1, d.length, cols).setValues(d);
   sh.getRange(2, 3, 3 + d.length, list.length).setNumberFormat('#,##0;-#,##0;');
