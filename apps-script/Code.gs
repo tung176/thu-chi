@@ -353,6 +353,7 @@ function buildMonthly_(ss, catalog) {
     chiRow.push(tC);
     conRow.push(tT - tC);
   }
+  sh.getRange(1, cols + 2).setValue('Bản mã: số tính sẵn v3, cập nhật ' + Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'dd/MM HH:mm'));
   sh.getRange(2, 1, 3, cols).setValues([thuRow, chiRow, conRow]);
   if (d.length) sh.getRange(first5, 1, d.length, cols).setValues(d);
   sh.getRange(2, 4, 3 + d.length, list.length).setNumberFormat('#,##0;-#,##0;');
