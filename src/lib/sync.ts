@@ -123,9 +123,8 @@ export async function testSync(): Promise<number> {
 
 type Row = (string | number | boolean)[]
 
-/** Một khoản thành một dòng, đúng thứ tự cột trong Code.gs. */
-export function toRow(t: Txn, cats: Category[]): Row {
-  const cat = cats.find((c) => c.id === t.categoryId)
+/** Loại, nhóm lớn và mục của một danh mục, dùng cho cột trên Sheet. */
+function pathParts(cat: Category | undefined, cats: Category[]): { loai: string; group: string; item: string } {
   const chain: Category[] = []
   let cur: Category | undefined = cat
   while (cur) {
@@ -140,6 +139,25 @@ export function toRow(t: Txn, cats: Category[]): Row {
   const item = mid
     .filter((n, i) => i === mid.length - 1 || !mid[i + 1].toLowerCase().includes(n.toLowerCase()))
     .join(' › ')
+  return { loai, group, item }
+}
+
+/** Danh sách mục để đọc trên Sheet: mỗi dòng [Thu/Chi, nhóm lớn, mục], theo thứ tự danh mục của app. */
+export function catalogRows(cats: Category[]): string[][] {
+  const out: string[][] = []
+  for (const c of cats) {
+    if (c.archived || c.container) continue
+    const p = pathParts(c, cats)
+    out.push([p.loai, p.group, p.item])
+  }
+  const thu = out.filter((r) => r[0] === 'Thu')
+  return [...thu, ...out.filter((r) => r[0] === 'Chi')]
+}
+
+/** Một khoản thành một dòng, đúng thứ tự cột trong Code.gs. */
+export function toRow(t: Txn, cats: Category[]): Row {
+  const cat = cats.find((c) => c.id === t.categoryId)
+  const { loai, group, item } = pathParts(cat, cats)
   // Nội dung: Thu hoặc Chi, rồi nhóm lớn, mục nhỏ, và nội dung bạn đã gõ.
   const content = [loai, group, item, t.note].filter(Boolean).join(' - ')
   const del = !!t.deleted
@@ -183,17 +201,18 @@ export async function pushNow(force = false): Promise<{ pushed: number }> {
   const custom = cats
     .filter((c) => c.id.startsWith('u-'))
     .map((c) => [c.id, c.plan ? planName(c.name, c.plan) : c.overdraft ? overdraftName(c.name, c.overdraft) : c.name, c.kind, c.parentId ?? ''])
-  const sig = JSON.stringify(custom)
-  const catsChanged = custom.length > 0 && sig !== st.catSig
+  const catalog = catalogRows(cats)
+  const sig = JSON.stringify([custom, catalog])
+  const catsChanged = sig !== st.catSig
 
   if (pend.length === 0 && !catsChanged) return { pushed: 0 }
 
   if (pend.length === 0) {
     // Chỉ danh mục đổi (ví dụ vừa thêm kế hoạch trả góp): đẩy riêng danh mục.
-    await post('upsert', { rows: [], categories: custom })
+    await post('upsert', { rows: [], categories: custom, catalog })
   }
   for (let i = 0; i < pend.length; i += CHUNK) {
-    await post('upsert', { rows: pend.slice(i, i + CHUNK).map((t) => toRow(t, cats)), categories: custom })
+    await post('upsert', { rows: pend.slice(i, i + CHUNK).map((t) => toRow(t, cats)), categories: custom, catalog })
   }
   const lastPushed = Math.max(st.lastPushed, ...pend.map((t) => t.updatedAt ?? 0))
   setState({ fullPushed: true, lastPushed, lastAt: Date.now(), catSig: sig })

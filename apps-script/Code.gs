@@ -15,17 +15,22 @@
 var SECRET = 'DOI-CHUOI-NAY-THANH-MA-BI-MAT-CUA-BAN';
 
 var TX_SHEET = 'GiaoDich';
-var CAT_SHEET = 'DanhMuc';
+var CAT_SHEET = 'DanhMuc'; // kỹ thuật: danh mục tự tạo và kế hoạch trả góp (được ẩn đi)
+var CAT_VIEW_SHEET = 'DanhMucDayDu'; // bảng danh mục để đọc: Loại, Nhóm lớn, Mục
+var MONTH_SHEET = 'BangThang'; // bảng cộng theo tháng, tự tính từ GiaoDich bằng công thức
 
-// Thứ tự cột của sheet GiaoDich. Cột D đến E và C do app tính sẵn; các cột F trở đi là dữ liệu gốc.
+// Bố cục trang GiaoDich (cột A đến M). Khoản mới được sắp theo ngày rồi giờ, cũ ở trên, mới ở dưới.
 var TX_HEADERS = [
-  'Ngày', 'Giờ', 'Nội dung', 'Số tiền', 'Số tiền (+/−)',
-  'Loại', 'Nhóm lớn', 'Mục', 'Ghi chú gốc',
+  'Ngày', 'Giờ', 'Loại', 'Nhóm lớn', 'Mục', 'Nội dung', 'Số tiền', 'Số tiền (+/−)',
   'Mã khoản', 'Mã danh mục', 'Cập nhật lúc', 'Đã xóa', 'Tổng hợp tháng'
 ];
+var TX_N = TX_HEADERS.length;
+var ID_COL = 9; // cột I: Mã khoản
+var IN_LEN = 14; // dòng app gửi lên có 14 phần (thứ tự cũ, không đổi để app và mã này khớp với mọi phiên bản)
+var DEL_PREFIX = '[Đã xóa] ';
 var CAT_HEADERS = ['Mã danh mục', 'Tên', 'Loại', 'Nhóm cha'];
-var ID_COL = 10; // cột J: Mã khoản
 var PLACEHOLDER = 'DOI-CHUOI-NAY-THANH-MA-BI-MAT-CUA-BAN';
+var FORMULA_ROWS = 20000; // công thức Bảng tháng đọc tối đa tới dòng này của GiaoDich
 
 function out_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
@@ -49,8 +54,9 @@ function doPost(e) {
     lock.waitLock(20000);
     try {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
+      migrate_(ss);
       if (req.action === 'ping') return out_(ping_(ss));
-      if (req.action === 'upsert') return out_(upsert_(ss, req.rows || [], req.categories || []));
+      if (req.action === 'upsert') return out_(upsert_(ss, req.rows || [], req.categories || [], req.catalog || null));
       if (req.action === 'pull') return out_(pull_(ss));
       return out_({ ok: false, error: 'Yêu cầu không hợp lệ.' });
     } finally {
@@ -61,20 +67,92 @@ function doPost(e) {
   }
 }
 
+function text_(v) {
+  return v === null || v === undefined ? '' : String(v);
+}
+
+function dateText_(ss, v) {
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    return Utilities.formatDate(v, ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+  }
+  return text_(v);
+}
+
+function timeText_(ss, v) {
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    return Utilities.formatDate(v, ss.getSpreadsheetTimeZone(), 'HH:mm');
+  }
+  return text_(v) || '00:00';
+}
+
+function isTrue_(v) {
+  return v === true || text_(v).toUpperCase() === 'TRUE';
+}
+
+// Dòng app gửi (thứ tự: ngày, giờ, nội dung gộp, số tiền, +/−, loại, nhóm, mục, ghi chú, mã khoản, mã danh mục, cập nhật, xóa, tổng hợp)
+// thành dòng của trang GiaoDich. Cột Nội dung chỉ giữ ghi chú bạn đã gõ.
+function toSheetRow_(r) {
+  var del = isTrue_(r[12]);
+  return [r[0], r[1], r[5], r[6], r[7], (del ? DEL_PREFIX : '') + text_(r[8]), r[3], r[4], r[9], r[10], r[11], r[12], r[13]];
+}
+
+function noteOf_(v) {
+  var s = text_(v);
+  return s.indexOf(DEL_PREFIX) === 0 ? s.slice(DEL_PREFIX.length) : s;
+}
+
+function formatTx_(sh) {
+  sh.getRange(1, 1, 1, TX_N).setValues([TX_HEADERS]).setFontWeight('bold');
+  sh.setFrozenRows(1);
+  // Giữ nguyên chữ, không để Sheets tự đổi ngày giờ hay mã thành kiểu khác.
+  sh.getRange('A:B').setNumberFormat('@');
+  sh.getRange('I:J').setNumberFormat('@');
+  sh.getRange('K:K').setNumberFormat('0');
+  sh.getRange('G:H').setNumberFormat('#,##0');
+  sh.setColumnWidth(6, 300);
+  // Các cột mã kỹ thuật nằm bên phải và được ẩn đi; app vẫn dùng để khôi phục.
+  sh.hideColumns(9, 5);
+}
+
 function txSheet_(ss) {
   var sh = ss.getSheetByName(TX_SHEET);
   if (!sh) {
     sh = ss.insertSheet(TX_SHEET);
-    sh.getRange(1, 1, 1, TX_HEADERS.length).setValues([TX_HEADERS]).setFontWeight('bold');
-    sh.setFrozenRows(1);
-    // Giữ nguyên chữ, không để Sheets tự đổi ngày giờ hay mã thành kiểu khác.
-    sh.getRange('A:B').setNumberFormat('@');
-    sh.getRange('J:K').setNumberFormat('@');
-    sh.getRange('L:L').setNumberFormat('0');
-    sh.getRange('D:E').setNumberFormat('#,##0');
-    sh.setColumnWidth(3, 380);
+    formatTx_(sh);
   }
   return sh;
+}
+
+function sortTx_(sh) {
+  var last = sh.getLastRow();
+  if (last < 3) return;
+  sh.getRange(2, 1, last - 1, TX_N).sort([{ column: 1, ascending: true }, { column: 2, ascending: true }]);
+}
+
+// Bản cũ của trang GiaoDich có cột C là "Nội dung" gộp. Đổi sang bố cục mới một lần, có giữ bản sao lưu trước khi đổi.
+function migrate_(ss) {
+  var sh = ss.getSheetByName(TX_SHEET);
+  if (!sh || sh.getLastRow() < 1) return;
+  if (text_(sh.getRange(1, 3, 1, 1).getValues()[0][0]) !== 'Nội dung') return;
+  var last = sh.getLastRow();
+  var old = last >= 2 ? sh.getRange(2, 1, last - 1, IN_LEN).getValues() : [];
+  var rows = [];
+  for (var i = 0; i < old.length; i++) {
+    var r = old[i];
+    if (!text_(r[9])) continue;
+    r[0] = dateText_(ss, r[0]);
+    r[1] = timeText_(ss, r[1]);
+    rows.push(toSheetRow_(r));
+  }
+  if (!ss.getSheetByName('GiaoDich_saoluu_cu')) {
+    var bak = sh.copyTo(ss);
+    bak.setName('GiaoDich_saoluu_cu');
+    bak.hideSheet();
+  }
+  sh.clear();
+  formatTx_(sh);
+  if (rows.length) sh.getRange(2, 1, rows.length, TX_N).setValues(rows);
+  sortTx_(sh);
 }
 
 function catSheet_(ss) {
@@ -84,6 +162,7 @@ function catSheet_(ss) {
     sh.getRange(1, 1, 1, CAT_HEADERS.length).setValues([CAT_HEADERS]).setFontWeight('bold');
     sh.setFrozenRows(1);
     sh.getRange('A:D').setNumberFormat('@');
+    sh.hideSheet();
   }
   return sh;
 }
@@ -95,9 +174,9 @@ function ping_(ss) {
 }
 
 // Ghi các dòng: có mã khoản rồi thì cập nhật dòng đó, chưa có thì thêm vào cuối. Gửi lại nhiều lần không bị trùng.
-function upsert_(ss, rows, cats) {
+// Sau khi ghi, sắp lại theo ngày rồi giờ và dựng lại Bảng tháng.
+function upsert_(ss, rows, cats, catalog) {
   var sh = txSheet_(ss);
-  var n = TX_HEADERS.length;
   var last = sh.getLastRow();
 
   var index = {};
@@ -111,8 +190,8 @@ function upsert_(ss, rows, cats) {
   var order = [];
   for (var k = 0; k < rows.length; k++) {
     var r = rows[k];
-    if (!r || r.length !== n) continue;
-    var id = String(r[ID_COL - 1]);
+    if (!r || r.length !== IN_LEN) continue;
+    var id = String(r[9]);
     if (!id) continue;
     if (!(id in batch)) order.push(id);
     batch[id] = r;
@@ -123,17 +202,20 @@ function upsert_(ss, rows, cats) {
   for (var j = 0; j < order.length; j++) {
     var key = order[j];
     if (index[key]) {
-      sh.getRange(index[key], 1, 1, n).setValues([batch[key]]);
+      sh.getRange(index[key], 1, 1, TX_N).setValues([toSheetRow_(batch[key])]);
       updated++;
     } else {
-      appendRows.push(batch[key]);
+      appendRows.push(toSheetRow_(batch[key]));
     }
   }
   if (appendRows.length) {
-    sh.getRange(last + 1, 1, appendRows.length, n).setValues(appendRows);
+    sh.getRange(last + 1, 1, appendRows.length, TX_N).setValues(appendRows);
   }
+  sortTx_(sh);
 
   upsertCats_(ss, cats);
+  if (catalog) writeCatalog_(ss, catalog);
+  buildMonthly_(ss, catalog);
   return { ok: true, added: appendRows.length, updated: updated };
 }
 
@@ -160,26 +242,126 @@ function upsertCats_(ss, cats) {
   if (appendRows.length) sh.getRange(last + 1, 1, appendRows.length, CAT_HEADERS.length).setValues(appendRows);
 }
 
-function text_(v) {
-  return v === null || v === undefined ? '' : String(v);
-}
-
-function dateText_(ss, v) {
-  if (Object.prototype.toString.call(v) === '[object Date]') {
-    return Utilities.formatDate(v, ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+// Bảng danh mục để đọc: mỗi dòng một mục, gồm Loại (Thu/Chi), Nhóm lớn, Mục. Ghi lại toàn bộ mỗi lần app gửi.
+function writeCatalog_(ss, catalog) {
+  var sh = ss.getSheetByName(CAT_VIEW_SHEET) || ss.insertSheet(CAT_VIEW_SHEET);
+  sh.clear();
+  var rows = [];
+  for (var i = 0; i < catalog.length; i++) {
+    var c = catalog[i];
+    if (c && c.length === 3) rows.push([text_(c[0]), text_(c[1]), text_(c[2])]);
   }
-  return text_(v);
+  sh.getRange(1, 1, 1, 3).setValues([['Loại', 'Nhóm lớn', 'Mục']]).setFontWeight('bold');
+  sh.setFrozenRows(1);
+  sh.getRange('A:C').setNumberFormat('@');
+  if (rows.length) sh.getRange(2, 1, rows.length, 3).setValues(rows);
+  sh.setColumnWidth(2, 220);
+  sh.setColumnWidth(3, 260);
 }
 
-function timeText_(ss, v) {
-  if (Object.prototype.toString.call(v) === '[object Date]') {
-    return Utilities.formatDate(v, ss.getSpreadsheetTimeZone(), 'HH:mm');
+function monthAdd_(ym, n) {
+  var y = Number(ym.slice(0, 4));
+  var m = Number(ym.slice(5, 7)) - 1 + n;
+  y += Math.floor(m / 12);
+  m = ((m % 12) + 12) % 12;
+  return y + '-' + (m < 9 ? '0' : '') + (m + 1);
+}
+
+function colLetter_(n) {
+  var s = '';
+  while (n > 0) {
+    var k = (n - 1) % 26;
+    s = String.fromCharCode(65 + k) + s;
+    n = Math.floor((n - 1) / 26);
   }
-  return text_(v) || '00:00';
+  return s;
 }
 
-function isTrue_(v) {
-  return v === true || text_(v).toUpperCase() === 'TRUE';
+// Trang đầu tiên: bảng cộng theo tháng giống file Excel cũ. Chỉ hiện dòng có số; mỗi ô là công thức đọc từ GiaoDich.
+function buildMonthly_(ss, catalog) {
+  var tx = ss.getSheetByName(TX_SHEET);
+  if (!tx || tx.getLastRow() < 2) return;
+  var vals = tx.getRange(2, 1, tx.getLastRow() - 1, TX_N).getValues();
+  var monthSet = {};
+  var seen = {};
+  var items = [];
+  for (var i = 0; i < vals.length; i++) {
+    var r = vals[i];
+    if (!text_(r[ID_COL - 1]) || isTrue_(r[11])) continue;
+    var ym = dateText_(ss, r[0]).slice(0, 7);
+    if (ym.length !== 7) continue;
+    monthSet[ym] = true;
+    var key = text_(r[2]) + '|' + text_(r[3]) + '|' + text_(r[4]);
+    if (!seen[key]) {
+      seen[key] = true;
+      items.push([text_(r[2]), text_(r[3]), text_(r[4])]);
+    }
+  }
+  var months = Object.keys(monthSet).sort();
+  if (!months.length) return;
+  var thisMonth = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd').slice(0, 7);
+  var lastM = months[months.length - 1] > thisMonth ? months[months.length - 1] : thisMonth;
+  var list = [];
+  for (var m = months[0]; m <= lastM; m = monthAdd_(m, 1)) list.push(m);
+
+  // Thứ tự dòng: Thu trước Chi, trong mỗi loại theo thứ tự danh mục của app (mục lạ xếp cuối).
+  var pos = {};
+  if (catalog) {
+    for (var c = 0; c < catalog.length; c++) pos[text_(catalog[c][0]) + '|' + text_(catalog[c][1]) + '|' + text_(catalog[c][2])] = c;
+  }
+  items.sort(function (a, b) {
+    if (a[0] !== b[0]) return a[0] === 'Thu' ? -1 : 1;
+    var pa = pos[a.join('|')];
+    var pb = pos[b.join('|')];
+    if (pa === undefined) pa = 100000;
+    if (pb === undefined) pb = 100000;
+    return pa - pb;
+  });
+
+  var sh = ss.getSheetByName(MONTH_SHEET);
+  if (!sh) sh = ss.insertSheet(MONTH_SHEET, 0);
+  sh.clear();
+  var cols = 3 + list.length;
+  var first5 = 5;
+  var lastRow = 4 + items.length;
+  sh.getRange(1, 4, 1, list.length).setNumberFormat('@');
+  sh.getRange(1, 1, 1, cols).setValues([['Loại', 'Nhóm lớn', 'Mục'].concat(list)]).setFontWeight('bold');
+
+  var A = TX_SHEET + '!$A$2:$A$' + FORMULA_ROWS;
+  var C = TX_SHEET + '!$C$2:$C$' + FORMULA_ROWS;
+  var D = TX_SHEET + '!$D$2:$D$' + FORMULA_ROWS;
+  var E = TX_SHEET + '!$E$2:$E$' + FORMULA_ROWS;
+  var L = TX_SHEET + '!$L$2:$L$' + FORMULA_ROWS;
+  var G = TX_SHEET + '!$G$2:$G$' + FORMULA_ROWS;
+
+  var f = [['THU', '', ''], ['CHI', '', ''], ['CÒN LẠI (Thu − Chi)', '', '']];
+  for (var q = 0; q < list.length; q++) {
+    var col = colLetter_(4 + q);
+    var span = col + '$' + first5 + ':' + col + '$' + lastRow;
+    f[0].push('=SUMIF($A$' + first5 + ':$A$' + lastRow + ',"Thu",' + span + ')');
+    f[1].push('=SUMIF($A$' + first5 + ':$A$' + lastRow + ',"Chi",' + span + ')');
+    f[2].push('=' + col + '2-' + col + '3');
+  }
+  var d = [];
+  for (var n = 0; n < items.length; n++) {
+    var row = [items[n][0], items[n][1], items[n][2]];
+    var rr = first5 + n;
+    for (var p = 0; p < list.length; p++) {
+      var cc = colLetter_(4 + p);
+      row.push(
+        '=SUMPRODUCT((LEFT(' + A + ',7)=' + cc + '$1)*(' + C + '=$A' + rr + ')*(' + D + '=$B' + rr + ')*(' + E + '=$C' + rr + ')*(' + L + '<>TRUE)*' + G + ')'
+      );
+    }
+    d.push(row);
+  }
+  sh.getRange(2, 1, 3, cols).setFormulas(f);
+  if (d.length) sh.getRange(first5, 1, d.length, cols).setFormulas(d);
+  sh.getRange(2, 4, 3 + d.length, list.length).setNumberFormat('#,##0;-#,##0;');
+  sh.getRange(2, 1, 3, cols).setFontWeight('bold');
+  sh.setFrozenRows(1);
+  sh.setFrozenColumns(3);
+  sh.setColumnWidth(2, 180);
+  sh.setColumnWidth(3, 220);
 }
 
 // Trả toàn bộ dữ liệu gốc về cho app (dùng khi khôi phục sang điện thoại mới).
@@ -187,7 +369,7 @@ function pull_(ss) {
   var txns = [];
   var sh = ss.getSheetByName(TX_SHEET);
   if (sh && sh.getLastRow() >= 2) {
-    var vals = sh.getRange(2, 1, sh.getLastRow() - 1, TX_HEADERS.length).getValues();
+    var vals = sh.getRange(2, 1, sh.getLastRow() - 1, TX_N).getValues();
     for (var i = 0; i < vals.length; i++) {
       var r = vals[i];
       var id = text_(r[ID_COL - 1]);
@@ -196,12 +378,12 @@ function pull_(ss) {
         id: id,
         date: dateText_(ss, r[0]),
         time: timeText_(ss, r[1]),
-        amount: Number(r[3]) || 0,
-        categoryId: text_(r[10]),
-        note: text_(r[8]),
-        updatedAt: Number(r[11]) || 0,
-        deleted: isTrue_(r[12]),
-        summary: isTrue_(r[13])
+        amount: Number(r[6]) || 0,
+        categoryId: text_(r[9]),
+        note: noteOf_(r[5]),
+        updatedAt: Number(r[10]) || 0,
+        deleted: isTrue_(r[11]),
+        summary: isTrue_(r[12])
       });
     }
   }
