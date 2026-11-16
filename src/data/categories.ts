@@ -138,6 +138,9 @@ export const CATEGORIES: Category[] = [
   chi('chi-tranno', 'Trả nợ', 'g-chi-taichinh'),
   chi('chi-phinh', 'Phí ngân hàng, lãi', 'g-chi-taichinh'),
 
+  // 13b. Chi tiêu hàng ngày (một mục, đứng riêng): mua sắm online, nạp tiền lặt vặt, đồ dùng nhỏ
+  chi('chi-hangngay', 'Chi tiêu hàng ngày', null),
+
   // 14. Chưa phân loại: chỗ tạm cho mục app tự tạo mà chưa biết xếp vào nhóm nào
   chi('chi-phatsinh', 'Chưa phân loại', null, { container: true }),
 ]

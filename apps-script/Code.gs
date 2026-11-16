@@ -290,10 +290,10 @@ function buildMonthly_(ss, catalog) {
     var ym = dateText_(ss, r[0]).slice(0, 7);
     if (ym.length !== 7) continue;
     monthSet[ym] = true;
-    var key = text_(r[2]) + '|' + text_(r[3]) + '|' + text_(r[4]);
+    var key = text_(r[2]) + '|' + text_(r[3]);
     if (!seen[key]) {
       seen[key] = true;
-      items.push([text_(r[2]), text_(r[3]), text_(r[4])]);
+      items.push([text_(r[2]), text_(r[3])]);
     }
   }
   var months = Object.keys(monthSet).sort();
@@ -306,7 +306,10 @@ function buildMonthly_(ss, catalog) {
   // Thứ tự dòng: Thu trước Chi, trong mỗi loại theo thứ tự danh mục của app (mục lạ xếp cuối).
   var pos = {};
   if (catalog) {
-    for (var c = 0; c < catalog.length; c++) pos[text_(catalog[c][0]) + '|' + text_(catalog[c][1]) + '|' + text_(catalog[c][2])] = c;
+    for (var c = 0; c < catalog.length; c++) {
+      var pk = text_(catalog[c][0]) + '|' + text_(catalog[c][1]);
+      if (pos[pk] === undefined) pos[pk] = c;
+    }
   }
   items.sort(function (a, b) {
     if (a[0] !== b[0]) return a[0] === 'Thu' ? -1 : 1;
@@ -320,11 +323,11 @@ function buildMonthly_(ss, catalog) {
   var sh = ss.getSheetByName(MONTH_SHEET);
   if (!sh) sh = ss.insertSheet(MONTH_SHEET, 0);
   sh.clear();
-  var cols = 3 + list.length;
+  var cols = 2 + list.length;
   var first5 = 5;
   var lastRow = 4 + items.length;
-  sh.getRange(1, 4, 1, list.length).setNumberFormat('@');
-  sh.getRange(1, 1, 1, cols).setValues([['Loại', 'Nhóm lớn', 'Mục'].concat(list)]).setFontWeight('bold');
+  sh.getRange(1, 3, 1, list.length).setNumberFormat('@');
+  sh.getRange(1, 1, 1, cols).setValues([['Loại', 'Nhóm lớn'].concat(list)]).setFontWeight('bold');
 
   // Tính sẵn bằng mã (không dùng công thức để khỏi phụ thuộc kiểu gõ công thức của từng ngôn ngữ Google Sheets).
   // Bảng được dựng lại sau mỗi lần app đồng bộ.
@@ -332,14 +335,14 @@ function buildMonthly_(ss, catalog) {
   for (var k = 0; k < vals.length; k++) {
     var v = vals[k];
     if (!text_(v[ID_COL - 1]) || isTrue_(v[11])) continue;
-    var key2 = dateText_(ss, v[0]).slice(0, 7) + '|' + text_(v[2]) + '|' + text_(v[3]) + '|' + text_(v[4]);
+    var key2 = dateText_(ss, v[0]).slice(0, 7) + '|' + text_(v[2]) + '|' + text_(v[3]);
     sums[key2] = (sums[key2] || 0) + (Number(v[6]) || 0);
   }
-  var thuRow = ['THU', '', ''];
-  var chiRow = ['CHI', '', ''];
-  var conRow = ['CÒN LẠI (Thu − Chi)', '', ''];
+  var thuRow = ['THU', ''];
+  var chiRow = ['CHI', ''];
+  var conRow = ['CÒN LẠI (Thu − Chi)', ''];
   var d = [];
-  for (var n = 0; n < items.length; n++) d.push([items[n][0], items[n][1], items[n][2]]);
+  for (var n = 0; n < items.length; n++) d.push([items[n][0], items[n][1]]);
   for (var q = 0; q < list.length; q++) {
     var tT = 0;
     var tC = 0;
@@ -353,15 +356,14 @@ function buildMonthly_(ss, catalog) {
     chiRow.push(tC);
     conRow.push(tT - tC);
   }
-  sh.getRange(1, cols + 2).setValue('Bản mã: số tính sẵn v3, cập nhật ' + Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'dd/MM HH:mm'));
+  sh.getRange(1, cols + 2).setValue('Bản mã: số tính sẵn v4 (chỉ nhóm lớn), cập nhật ' + Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'dd/MM HH:mm'));
   sh.getRange(2, 1, 3, cols).setValues([thuRow, chiRow, conRow]);
   if (d.length) sh.getRange(first5, 1, d.length, cols).setValues(d);
-  sh.getRange(2, 4, 3 + d.length, list.length).setNumberFormat('#,##0;-#,##0;');
+  sh.getRange(2, 3, 3 + d.length, list.length).setNumberFormat('#,##0;-#,##0;');
   sh.getRange(2, 1, 3, cols).setFontWeight('bold');
   sh.setFrozenRows(1);
-  sh.setFrozenColumns(3);
+  sh.setFrozenColumns(2);
   sh.setColumnWidth(2, 180);
-  sh.setColumnWidth(3, 220);
 }
 
 // Trả toàn bộ dữ liệu gốc về cho app (dùng khi khôi phục sang điện thoại mới).

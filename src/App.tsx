@@ -17,6 +17,7 @@ import {
 import { loanIntent, nextDay, withLoanEvent } from './lib/overdraft'
 import { addMonths } from './lib/plan'
 import { withDerived } from './lib/derived'
+import { isUnclassified, reclassTarget } from './lib/reclass'
 import type { Category, History, Txn } from './types'
 
 type Tab = 'entry' | 'days' | 'overview' | 'table' | 'settings'
@@ -176,6 +177,29 @@ export default function App() {
       if (!t.summary || t.deleted) continue
       if (Number(t.date.slice(8)) < 28) continue
       updateTxn({ ...t, date: addMonths(t.date.slice(0, 7), 1) + '-01', updatedAt: Date.now() })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [txns])
+
+  // Một lần: khoản cũ đang ở "Chưa phân loại" mà anh đã dặn mục đúng thì chuyển sang mục đó; mục tự tạo bị bỏ trống thì xóa.
+  const reclassed = useRef(false)
+  useEffect(() => {
+    if (!txns || reclassed.current) return
+    reclassed.current = true
+    const moved = new Set<string>()
+    const from = new Set<string>()
+    for (const t of txns) {
+      if (t.deleted || t.summary) continue
+      const target = reclassTarget(t.note)
+      if (!target || t.categoryId === target) continue
+      if (!isUnclassified(categories.find((c) => c.id === t.categoryId), categories)) continue
+      updateTxn({ ...t, categoryId: target, updatedAt: Date.now() })
+      moved.add(t.id)
+      from.add(t.categoryId)
+    }
+    for (const id of from) {
+      if (!id.startsWith('u-')) continue
+      if (!txns.some((x) => x.categoryId === id && !x.deleted && !moved.has(x.id))) removeCategory(id)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [txns])
