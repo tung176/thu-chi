@@ -30,7 +30,6 @@ var IN_LEN = 14; // dòng app gửi lên có 14 phần (thứ tự cũ, không �
 var DEL_PREFIX = '[Đã xóa] ';
 var CAT_HEADERS = ['Mã danh mục', 'Tên', 'Loại', 'Nhóm cha'];
 var PLACEHOLDER = 'DOI-CHUOI-NAY-THANH-MA-BI-MAT-CUA-BAN';
-var FORMULA_ROWS = 20000; // công thức Bảng tháng đọc tối đa tới dòng này của GiaoDich
 
 function out_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
@@ -327,40 +326,35 @@ function buildMonthly_(ss, catalog) {
   sh.getRange(1, 4, 1, list.length).setNumberFormat('@');
   sh.getRange(1, 1, 1, cols).setValues([['Loại', 'Nhóm lớn', 'Mục'].concat(list)]).setFontWeight('bold');
 
-  var A = TX_SHEET + '!$A$2:$A$' + FORMULA_ROWS;
-  var C = TX_SHEET + '!$C$2:$C$' + FORMULA_ROWS;
-  var D = TX_SHEET + '!$D$2:$D$' + FORMULA_ROWS;
-  var E = TX_SHEET + '!$E$2:$E$' + FORMULA_ROWS;
-  var L = TX_SHEET + '!$L$2:$L$' + FORMULA_ROWS;
-  var G = TX_SHEET + '!$G$2:$G$' + FORMULA_ROWS;
-
-  var f = [['THU', '', ''], ['CHI', '', ''], ['CÒN LẠI (Thu − Chi)', '', '']];
-  for (var q = 0; q < list.length; q++) {
-    var col = colLetter_(4 + q);
-    var span = col + '$' + first5 + ':' + col + '$' + lastRow;
-    f[0].push('=SUMIF($A$' + first5 + ':$A$' + lastRow + ',"Thu",' + span + ')');
-    f[1].push('=SUMIF($A$' + first5 + ':$A$' + lastRow + ',"Chi",' + span + ')');
-    f[2].push('=' + col + '2-' + col + '3');
+  // Tính sẵn bằng mã (không dùng công thức để khỏi phụ thuộc kiểu gõ công thức của từng ngôn ngữ Google Sheets).
+  // Bảng được dựng lại sau mỗi lần app đồng bộ.
+  var sums = {};
+  for (var k = 0; k < vals.length; k++) {
+    var v = vals[k];
+    if (!text_(v[ID_COL - 1]) || isTrue_(v[11])) continue;
+    var key2 = dateText_(ss, v[0]).slice(0, 7) + '|' + text_(v[2]) + '|' + text_(v[3]) + '|' + text_(v[4]);
+    sums[key2] = (sums[key2] || 0) + (Number(v[6]) || 0);
   }
+  var thuRow = ['THU', '', ''];
+  var chiRow = ['CHI', '', ''];
+  var conRow = ['CÒN LẠI (Thu − Chi)', '', ''];
   var d = [];
-  for (var n = 0; n < items.length; n++) {
-    var row = [items[n][0], items[n][1], items[n][2]];
-    var rr = first5 + n;
-    for (var p = 0; p < list.length; p++) {
-      var cc = colLetter_(4 + p);
-      row.push(
-        '=SUMPRODUCT((LEFT(' + A + ',7)=' + cc + '$1)*(' + C + '=$A' + rr + ')*(' + D + '=$B' + rr + ')*(' + E + '=$C' + rr + ')*(' + L + '<>TRUE)*' + G + ')'
-      );
+  for (var n = 0; n < items.length; n++) d.push([items[n][0], items[n][1], items[n][2]]);
+  for (var q = 0; q < list.length; q++) {
+    var tT = 0;
+    var tC = 0;
+    for (var n2 = 0; n2 < items.length; n2++) {
+      var amt = sums[list[q] + '|' + items[n2].join('|')] || 0;
+      d[n2].push(amt === 0 ? '' : amt);
+      if (items[n2][0] === 'Thu') tT += amt;
+      else tC += amt;
     }
-    d.push(row);
+    thuRow.push(tT);
+    chiRow.push(tC);
+    conRow.push(tT - tC);
   }
-  // setFormulas coi mọi chuỗi là công thức (chữ thường thành #NAME?), nên nhãn ghi bằng setValues, số liệu mới là công thức.
-  sh.getRange(2, 1, 3, 3).setValues(f.map(function (x) { return x.slice(0, 3); }));
-  sh.getRange(2, 4, 3, list.length).setFormulas(f.map(function (x) { return x.slice(3); }));
-  if (d.length) {
-    sh.getRange(first5, 1, d.length, 3).setValues(d.map(function (x) { return x.slice(0, 3); }));
-    sh.getRange(first5, 4, d.length, list.length).setFormulas(d.map(function (x) { return x.slice(3); }));
-  }
+  sh.getRange(2, 1, 3, cols).setValues([thuRow, chiRow, conRow]);
+  if (d.length) sh.getRange(first5, 1, d.length, cols).setValues(d);
   sh.getRange(2, 4, 3 + d.length, list.length).setNumberFormat('#,##0;-#,##0;');
   sh.getRange(2, 1, 3, cols).setFontWeight('bold');
   sh.setFrozenRows(1);
