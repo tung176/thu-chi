@@ -277,6 +277,13 @@ function colLetter_(n) {
 }
 
 // Trang đầu tiên: bảng cộng theo tháng giống file Excel cũ. Chỉ hiện dòng có số; mỗi ô là công thức đọc từ GiaoDich.
+// Tên dòng ở BangThang: tiền ăn cho bố mẹ và cho vợ con tách riêng khỏi "Ăn uống".
+function grp_(group, item) {
+  if (/^Tiền ăn gia đình/.test(item)) return 'Chi tiêu bố mẹ';
+  if (/^Tiền ăn cho con/.test(item)) return 'Chi tiêu vợ con';
+  return group;
+}
+
 function buildMonthly_(ss, catalog) {
   var tx = ss.getSheetByName(TX_SHEET);
   if (!tx || tx.getLastRow() < 2) return;
@@ -290,10 +297,11 @@ function buildMonthly_(ss, catalog) {
     var ym = dateText_(ss, r[0]).slice(0, 7);
     if (ym.length !== 7) continue;
     monthSet[ym] = true;
-    var key = text_(r[2]) + '|' + text_(r[3]);
+    var gname = grp_(text_(r[3]), text_(r[4]));
+    var key = text_(r[2]) + '|' + gname;
     if (!seen[key]) {
       seen[key] = true;
-      items.push([text_(r[2]), text_(r[3])]);
+      items.push([text_(r[2]), gname]);
     }
   }
   var months = Object.keys(monthSet).sort();
@@ -307,7 +315,7 @@ function buildMonthly_(ss, catalog) {
   var pos = {};
   if (catalog) {
     for (var c = 0; c < catalog.length; c++) {
-      var pk = text_(catalog[c][0]) + '|' + text_(catalog[c][1]);
+      var pk = text_(catalog[c][0]) + '|' + grp_(text_(catalog[c][1]), text_(catalog[c][2]));
       if (pos[pk] === undefined) pos[pk] = c;
     }
   }
@@ -325,7 +333,6 @@ function buildMonthly_(ss, catalog) {
   sh.clear();
   var cols = 2 + list.length;
   var first5 = 5;
-  var lastRow = 4 + items.length;
   sh.getRange(1, 3, 1, list.length).setNumberFormat('@');
   sh.getRange(1, 1, 1, cols).setValues([['Loại', 'Nhóm lớn'].concat(list)]).setFontWeight('bold');
 
@@ -335,32 +342,55 @@ function buildMonthly_(ss, catalog) {
   for (var k = 0; k < vals.length; k++) {
     var v = vals[k];
     if (!text_(v[ID_COL - 1]) || isTrue_(v[11])) continue;
-    var key2 = dateText_(ss, v[0]).slice(0, 7) + '|' + text_(v[2]) + '|' + text_(v[3]);
+    var key2 = dateText_(ss, v[0]).slice(0, 7) + '|' + text_(v[2]) + '|' + grp_(text_(v[3]), text_(v[4]));
     sums[key2] = (sums[key2] || 0) + (Number(v[6]) || 0);
   }
   var thuRow = ['THU', ''];
   var chiRow = ['CHI', ''];
   var conRow = ['CÒN LẠI (Thu − Chi)', ''];
   var d = [];
-  for (var n = 0; n < items.length; n++) d.push([items[n][0], items[n][1]]);
+  var kinds = [];
+  var gapAt = -1;
+  for (var n = 0; n < items.length; n++) {
+    if (n > 0 && items[n][0] !== items[n - 1][0]) {
+      gapAt = d.length;
+      d.push(['', '']);
+      kinds.push('');
+    }
+    d.push([items[n][0], items[n][1]]);
+    kinds.push(items[n][0]);
+  }
   for (var q = 0; q < list.length; q++) {
     var tT = 0;
     var tC = 0;
-    for (var n2 = 0; n2 < items.length; n2++) {
-      var amt = sums[list[q] + '|' + items[n2].join('|')] || 0;
+    for (var n2 = 0; n2 < d.length; n2++) {
+      if (!kinds[n2]) {
+        d[n2].push('');
+        continue;
+      }
+      var amt = sums[list[q] + '|' + d[n2][0] + '|' + d[n2][1]] || 0;
       d[n2].push(amt === 0 ? '' : amt);
-      if (items[n2][0] === 'Thu') tT += amt;
+      if (kinds[n2] === 'Thu') tT += amt;
       else tC += amt;
     }
     thuRow.push(tT);
     chiRow.push(tC);
     conRow.push(tT - tC);
   }
-  sh.getRange(1, cols + 2).setValue('Bản mã: số tính sẵn v4 (chỉ nhóm lớn), cập nhật ' + Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'dd/MM HH:mm'));
+  sh.getRange(1, cols + 2).setValue('Bản mã: số tính sẵn v5 (có màu, tách bố mẹ / vợ con), cập nhật ' + Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'dd/MM HH:mm'));
   sh.getRange(2, 1, 3, cols).setValues([thuRow, chiRow, conRow]);
   if (d.length) sh.getRange(first5, 1, d.length, cols).setValues(d);
   sh.getRange(2, 3, 3 + d.length, list.length).setNumberFormat('#,##0;-#,##0;');
   sh.getRange(2, 1, 3, cols).setFontWeight('bold');
+  // Tô màu: Thu xanh lá, Chi cam đỏ, Còn lại xám; dòng chi tiết nhạt hơn dòng tổng.
+  sh.getRange(1, 1, 1, cols).setBackground('#d9d9d9');
+  sh.getRange(2, 1, 1, cols).setBackground('#a8d5a2');
+  sh.getRange(3, 1, 1, cols).setBackground('#f4b6a6');
+  sh.getRange(4, 1, 1, cols).setBackground('#cfe2f3');
+  for (var z = 0; z < kinds.length; z++) {
+    if (kinds[z] === 'Thu') sh.getRange(first5 + z, 1, 1, cols).setBackground('#e6f4e3');
+    else if (kinds[z] === 'Chi') sh.getRange(first5 + z, 1, 1, cols).setBackground('#fbe5df');
+  }
   sh.setFrozenRows(1);
   sh.setFrozenColumns(2);
   sh.setColumnWidth(2, 180);

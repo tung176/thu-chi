@@ -188,12 +188,22 @@ export default function App() {
     reclassed.current = true
     const moved = new Set<string>()
     const from = new Set<string>()
+    // Lần đầu (v2): mọi khoản Chi còn ở "Chưa phân loại" mà không có quy tắc riêng thì xếp vào Tiền ăn gia đình (chi tiêu bố mẹ), theo lời anh.
+    let sweep = false
+    try {
+      sweep = localStorage.getItem('tc-sweep-v2') !== '1'
+      if (sweep) localStorage.setItem('tc-sweep-v2', '1')
+    } catch {
+      sweep = false
+    }
     for (const t of txns) {
-      if (t.deleted || t.summary) continue
-      const target = reclassTarget(t.note)
-      if (!target || t.categoryId === target) continue
-      if (!isUnclassified(categories.find((c) => c.id === t.categoryId), categories)) continue
-      updateTxn({ ...t, categoryId: target, updatedAt: Date.now() })
+      if (t.deleted) continue
+      const cat = categories.find((c) => c.id === t.categoryId)
+      if (!isUnclassified(cat, categories)) continue
+      const target = t.summary ? null : reclassTarget(t.note)
+      const dest = target ?? (sweep && cat?.kind !== 'thu' ? 'chi-angd' : null)
+      if (!dest || t.categoryId === dest) continue
+      updateTxn({ ...t, categoryId: dest, updatedAt: Date.now() })
       moved.add(t.id)
       from.add(t.categoryId)
     }
