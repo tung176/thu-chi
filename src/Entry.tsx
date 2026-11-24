@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Category, Kind, Txn } from './types'
 import { parse, press, type Key } from './lib/amount'
 import { vnd } from './lib/aggregate'
@@ -78,6 +78,14 @@ export function Entry({
   const [date, setDate] = useState<string | null>(null)
   const [time, setTime] = useState<string | null>(null)
   const [showWhen, setShowWhen] = useState(false)
+  const whenRef = useRef<HTMLDivElement>(null)
+  // Bàn phím số dính đáy màn hình sẽ che khung chọn ngày/giờ: mở ra thì cuộn khung lên phía trên bàn phím.
+  useEffect(() => {
+    if (!showWhen) return
+    const dockH = document.querySelector<HTMLElement>('.dock')?.offsetHeight ?? 0
+    if (whenRef.current) whenRef.current.style.scrollMarginBottom = `${dockH + 12}px`
+    whenRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [showWhen])
 
   const [picking, setPicking] = useState<Picking>(null)
   const [undo, setUndo] = useState<Undo | null>(null)
@@ -486,7 +494,7 @@ export function Entry({
             </div>
           )}
           {showWhen && (
-            <div className="when-pick">
+            <div className="when-pick" ref={whenRef}>
               <label>
                 Ngày
                 <input type="date" value={date ?? todayStr()} max={todayStr()} onChange={(e) => setDate(e.target.value || null)} />
