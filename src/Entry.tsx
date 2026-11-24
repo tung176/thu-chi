@@ -351,7 +351,7 @@ export function Entry({
       </form>
       {qErr ? (
         <div className="quick-err">{qErr}</div>
-      ) : (
+      ) : !manual && (
         <div className="chips quick-ex">
           {EXAMPLES.map((ex) => (
             <button
@@ -369,7 +369,7 @@ export function Entry({
         </div>
       )}
 
-      {recent.length > 0 && (
+      {!manual && recent.length > 0 && (
         <>
           <div className="mini recent-h">Vừa nhập (chạm tên mục để đổi)</div>
           <ul className="recent">
