@@ -322,7 +322,7 @@ export function Entry({
   )
 
   return (
-    <div className="page entry">
+    <div className={`page entry${manual ? ' fit' : ''}`}>
       <form
         className="quick"
         onSubmit={(e) => {
