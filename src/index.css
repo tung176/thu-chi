@@ -449,3 +449,8 @@ html { touch-action: manipulation; }
 .entry.fit .when-pick input[type="date"], .entry.fit .when-pick input[type="time"] { font-size: 13px; padding: 2px 2px; }
 .entry.fit .when-pick { gap: 4px; }
 .entry.fit .when-pick .chip { padding: 4px 8px; }
+
+/* Theo ngày: chạm một khoản để đổi ngày */
+.day-items li.tap { cursor: pointer; flex-wrap: wrap; }
+.di-edit { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.di-edit input { flex: 1; min-width: 130px; font-size: 16px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); }

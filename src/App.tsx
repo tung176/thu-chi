@@ -309,8 +309,9 @@ export default function App() {
     const ms = txns.map((t) => t.date.slice(0, 7)).sort()
     const lastData = ms[ms.length - 1]
     return {
-      months: monthRange(ms[0], thisMonth > lastData ? thisMonth : lastData),
-      latest: lastData,
+      months: monthRange(ms[0] < thisMonth ? ms[0] : thisMonth, thisMonth > lastData ? thisMonth : lastData),
+      // Khoản ghi trước cho tháng sau không làm các màn tự nhảy sang tháng đó.
+      latest: lastData > thisMonth ? thisMonth : lastData,
     }
   }, [txns])
 
@@ -384,7 +385,15 @@ export default function App() {
           />
         )}
         {tab === 'days' && (
-          <DayView categories={categories} txns={viewTxns} months={months} thisMonth={thisMonth} today={todayStr} />
+          <DayView
+            categories={categories}
+            txns={viewTxns}
+            realTxns={txns}
+            months={months}
+            thisMonth={thisMonth}
+            today={todayStr}
+            onUpdate={updateTxn}
+          />
         )}
         {tab === 'overview' && (
           <Overview

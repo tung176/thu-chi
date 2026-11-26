@@ -497,7 +497,7 @@ export function Entry({
             <div className="when-pick" ref={whenRef}>
               <label>
                 Ngày
-                <input type="date" value={date ?? todayStr()} max={todayStr()} onChange={(e) => setDate(e.target.value || null)} />
+                <input type="date" value={date ?? todayStr()} onChange={(e) => setDate(e.target.value || null)} />
               </label>
               <label>
                 Giờ

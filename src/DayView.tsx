@@ -6,12 +6,15 @@ import { pathOf } from './lib/entry'
 interface Props {
   categories: Category[]
   txns: Txn[]
+  /** Khoản thật đang lưu trong máy: chỉ những khoản này mới đổi ngày được. */
+  realTxns: Txn[]
   /** Mọi tháng có thể xem, từ cũ đến mới. */
   months: string[]
   /** Tháng hiện tại theo lịch của máy (YYYY-MM). */
   thisMonth: string
   /** Hôm nay (YYYY-MM-DD). */
   today: string
+  onUpdate: (t: Txn) => void
 }
 
 const WEEKDAY = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
@@ -31,15 +34,27 @@ interface Day {
 }
 
 /** Mỗi ngày thu chi bao nhiêu. Chỉ tính khoản ghi theo từng ngày; số tổng hợp tháng (từ file Sheet cũ) không có ngày thật nên không đưa vào đây. */
-export function DayView({ categories, txns, months, thisMonth, today }: Props) {
+export function DayView({ categories, txns, realTxns, months, thisMonth, today, onUpdate }: Props) {
   const real = useMemo(() => txns.filter((t) => !t.summary), [txns])
   const initial = useMemo(() => {
-    const withData = real.map((t) => t.date.slice(0, 7)).sort()
+    const withData = real.map((t) => t.date.slice(0, 7)).filter((m) => m <= thisMonth).sort()
     return withData[withData.length - 1] ?? thisMonth
   }, [real, thisMonth])
 
   const [month, setMonth] = useState(initial)
   const [open, setOpen] = useState<string | null>(null)
+  const [edit, setEdit] = useState<{ id: string; date: string } | null>(null)
+  const [movedMsg, setMovedMsg] = useState('')
+  const editable = useMemo(() => new Set(realTxns.map((t) => t.id)), [realTxns])
+
+  const saveDate = (id: string) => {
+    const t = realTxns.find((x) => x.id === id)
+    const date = edit?.date
+    setEdit(null)
+    if (!t || !date || date === t.date) return
+    onUpdate({ ...t, date, updatedAt: Date.now() })
+    setMovedMsg(`Đã chuyển sang ngày ${date.split('-').reverse().join('/')}`)
+  }
 
   const idx = months.indexOf(month)
   const kindOf = (id: string) => categories.find((c) => c.id === id)?.kind
@@ -106,6 +121,12 @@ export function DayView({ categories, txns, months, thisMonth, today }: Props) {
         </div>
       </div>
 
+      {movedMsg && (
+        <div className="msg ok" role="status">
+          {movedMsg}
+        </div>
+      )}
+
       {summaryOnly && (
         <p className="muted notice">
           Tháng này chỉ có số tổng hợp theo tháng (nhập từ file Sheet cũ), chưa có chi tiết từng ngày. Xem ở tab Bảng tháng.
@@ -144,7 +165,15 @@ export function DayView({ categories, txns, months, thisMonth, today }: Props) {
                     const cat = categories.find((c) => c.id === t.categoryId)
                     const isThu = cat?.kind === 'thu'
                     return (
-                      <li key={t.id}>
+                      <li
+                        key={t.id}
+                        className={editable.has(t.id) ? 'tap' : undefined}
+                        onClick={() => {
+                          if (!editable.has(t.id) || edit?.id === t.id) return
+                          setMovedMsg('')
+                          setEdit({ id: t.id, date: t.date })
+                        }}
+                      >
                         <div className="di-main">
                           <div>{t.note || (cat ? pathOf(cat, categories) : t.categoryId)}</div>
                           <div className="muted di-sub">
@@ -156,6 +185,22 @@ export function DayView({ categories, txns, months, thisMonth, today }: Props) {
                           {isThu ? '+' : '−'}
                           {vnd(t.amount)}
                         </div>
+                        {edit?.id === t.id && (
+                          <div className="di-edit" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="date"
+                              aria-label="Ngày của khoản này"
+                              value={edit.date}
+                              onChange={(e) => setEdit({ id: t.id, date: e.target.value })}
+                            />
+                            <button className="chip sel" disabled={!edit.date} onClick={() => saveDate(t.id)}>
+                              Đổi ngày
+                            </button>
+                            <button className="chip" onClick={() => setEdit(null)}>
+                              Hủy
+                            </button>
+                          </div>
+                        )}
                       </li>
                     )
                   })}
